@@ -1,0 +1,547 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Slab Ledger">
+<meta name="theme-color" content="#c4122f">
+<link rel="apple-touch-icon" href="icon.png">
+<link rel="icon" href="icon.png">
+<title>Slab Ledger</title>
+<style>
+/* Layout: one phone column. Sticky total band, two tabs (Log / History), entries styled like grading-slab labels. */
+:root{
+  --bg:#f3f3f1; --surface:#ffffff; --fg:#17181b; --muted:#6b6d73; --line:#dcdcd8;
+  --accent:#c4122f; --accent-ink:#ffffff; --accent-soft:#fbe7ea;
+  --warn:#9a5b00; --warn-soft:#fff3dc;
+  --c-pokemon:#d8a200; --c-basketball:#d4560f; --c-baseball:#1f5fa8; --c-football:#4b6b2a;
+  --f-display:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --f-mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  --r:10px; color-scheme:light;
+}
+@media (prefers-color-scheme: dark){:root{
+  --bg:#111214; --surface:#1b1c1f; --fg:#eceae6; --muted:#9b9da3; --line:#2e3034;
+  --accent:#ff4d64; --accent-ink:#1a0a0d; --accent-soft:#3a1a20;
+  --warn:#f2b14c; --warn-soft:#3a2c12;
+  --c-pokemon:#f2c230; --c-basketball:#ff8a4a; --c-baseball:#6ea6ef; --c-football:#9bc46a;
+  color-scheme:dark}}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--fg)}
+body{font-family:var(--f-display);font-size:16px;line-height:1.4;-webkit-tap-highlight-color:transparent;-webkit-text-size-adjust:100%}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--accent)}
+[hidden]{display:none!important}
+.wrap{max-width:560px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-top:env(safe-area-inset-top,0px);padding-bottom:calc(48px + env(safe-area-inset-bottom,0px))}
+.num{font-variant-numeric:tabular-nums}
+.mono{font-family:var(--f-mono)}
+
+/* total band */
+.band{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--accent);color:var(--accent-ink);margin:0 calc(-1 * max(16px,env(safe-area-inset-left,0px)));padding:14px max(16px,env(safe-area-inset-right,0px)) 12px max(16px,env(safe-area-inset-left,0px));cursor:pointer;user-select:none;-webkit-user-select:none}
+.band:focus-visible{outline:2px solid var(--fg);outline-offset:-4px}
+.band-top{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+.brand{font-weight:800;font-size:13px;letter-spacing:.14em;text-transform:uppercase}
+.sync{font-size:12px;opacity:.85}
+.today-label{font-size:12px;letter-spacing:.08em;text-transform:uppercase;opacity:.85;margin-top:6px;display:flex;align-items:center;gap:4px}
+.today-total{font-weight:800;font-size:44px;line-height:1.05;letter-spacing:-.01em}
+.minis{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:8px}
+.mini{font-size:11px;letter-spacing:.06em;text-transform:uppercase;opacity:.85}
+.mini b{display:block;font-size:16px;letter-spacing:0;text-transform:none;opacity:1;font-weight:700}
+.chev{width:14px;height:14px;margin-left:auto;opacity:.85}
+.fold{display:grid;grid-template-rows:1fr;opacity:1}
+.fold-in{overflow:hidden;min-height:0}
+.spent{display:inline-block;white-space:nowrap;overflow:hidden;max-width:12em;vertical-align:bottom}
+.band.min{padding-block:10px}
+.band.min .fold{grid-template-rows:0fr;opacity:0}
+.band.min .spent{max-width:0;opacity:0}
+.band.min .today-label{margin-top:0;font-size:15px;font-weight:700;letter-spacing:.06em;opacity:1}
+.band.min .chev{transform:rotate(180deg)}
+@media (prefers-reduced-motion:no-preference){
+  .band.anim,.band.anim .fold,.band.anim .spent,.band.anim .today-label,.band.anim .chev{transition:grid-template-rows .32s cubic-bezier(.2,.8,.2,1),opacity .24s ease,max-width .32s cubic-bezier(.2,.8,.2,1),padding .32s cubic-bezier(.2,.8,.2,1),margin .32s cubic-bezier(.2,.8,.2,1),font-size .32s cubic-bezier(.2,.8,.2,1),transform .32s ease}
+}
+
+/* tabs */
+.tabs{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:14px 0}
+.tab{font:inherit;font-weight:700;font-size:15px;padding:10px;border-radius:999px;border:1px solid var(--line);background:var(--surface);color:var(--fg);cursor:pointer}
+.tab[aria-selected="true"]{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+.tab:focus-visible,button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* form */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px;display:grid;gap:12px}
+label.lbl,span.lbl{font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:5px}
+input.in{width:100%;font:inherit;font-size:17px;padding:11px 12px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--fg)}
+.cert-row{display:flex;gap:8px}
+.cert-row input{flex:1;min-width:0;font-family:var(--f-mono);letter-spacing:.04em}
+.btn{font:inherit;font-weight:700;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--fg);padding:11px 14px;cursor:pointer;white-space:nowrap}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-size:17px;padding:14px}
+.btn.danger{color:var(--accent);border-color:var(--accent)}
+.btn.link{border:0;background:none;padding:6px 0;color:var(--muted);font-weight:600;text-decoration:underline}
+.btn:disabled{opacity:.5;cursor:default}
+.scan-btn{display:inline-flex;align-items:center;gap:6px}
+.scan-btn svg{width:18px;height:18px}
+.cats{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.cat{font:inherit;font-weight:600;padding:10px 8px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--fg);cursor:pointer;display:flex;align-items:center;gap:8px;justify-content:center}
+.cat i{width:10px;height:10px;border-radius:2px;display:inline-block}
+.cat[aria-pressed="true"]{border-color:var(--fg);box-shadow:inset 0 0 0 1px var(--fg);font-weight:800}
+.price-wrap{position:relative}
+.price-wrap span{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:17px}
+.price-wrap input{padding-left:26px;font-variant-numeric:tabular-nums}
+.note{font-size:13px;padding:9px 11px;border-radius:8px}
+.note.warn{background:var(--warn-soft);color:var(--warn)}
+.note.info{background:var(--accent-soft);color:var(--fg)}
+.hint{font-size:13px;color:var(--muted)}
+
+/* sections */
+.sec{display:flex;justify-content:space-between;align-items:baseline;margin:22px 0 10px;gap:12px}
+.sec h2{font-size:15px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;margin:0}
+.sec .sum{font-weight:700}
+
+/* slab entries + swipe */
+.list{display:grid;gap:8px}
+.swipe{position:relative;border-radius:8px;overflow:hidden}
+.swipe-del{position:absolute;top:0;right:0;bottom:0;width:100%;display:flex;align-items:center;justify-content:flex-end;padding-right:22px;border:0;background:var(--accent);color:var(--accent-ink);font:inherit;font-weight:800;font-size:15px;letter-spacing:.04em;cursor:pointer;visibility:hidden}
+.swipe.reveal .swipe-del{visibility:visible}
+.slab{position:relative;width:100%;text-align:left;font:inherit;color:var(--fg);background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:0;overflow:hidden;cursor:pointer;display:block;touch-action:pan-y;transition:transform .22s ease;user-select:none;-webkit-user-select:none}
+.slab.dragging{transition:none}
+.slab-top{display:flex;justify-content:space-between;gap:8px;padding:6px 10px;border-bottom:1px solid var(--line);font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+.slab-top .cat-tag{display:flex;align-items:center;gap:6px}
+.slab-top .cat-tag i{width:8px;height:8px;border-radius:2px}
+.slab-top .time{color:var(--muted);font-weight:600;letter-spacing:.02em}
+.slab-body{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:9px 10px 10px}
+.slab-body .left{min-width:0}
+.slab-name{font-weight:600;overflow-wrap:anywhere}
+.slab-cert{font-family:var(--f-mono);font-size:13px;color:var(--muted);margin-top:2px}
+.slab-price{font-weight:800;font-size:20px;white-space:nowrap}
+.empty{border:1px dashed var(--line);border-radius:8px;padding:18px;text-align:center;color:var(--muted);font-size:14px}
+@media (prefers-reduced-motion:no-preference){.slab.new{animation:pop .6s ease}@keyframes pop{from{background:var(--accent-soft)}}}
+
+/* history */
+.hist-controls{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:end}
+.day-row{display:flex;justify-content:space-between;align-items:center;width:100%;font:inherit;color:var(--fg);background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:11px 12px;cursor:pointer;text-align:left}
+.day-row .d{font-weight:600}
+.day-row .c{color:var(--muted);font-size:13px}
+.day-row b{font-weight:800}
+.day-row[aria-current="true"]{border-color:var(--fg);box-shadow:inset 0 0 0 1px var(--fg)}
+.catbars{display:grid;gap:6px;margin-top:4px}
+.catbar{display:grid;grid-template-columns:96px 1fr auto;gap:8px;align-items:center;font-size:13px}
+.catbar .track{height:8px;background:var(--bg);border:1px solid var(--line);border-radius:4px;overflow:hidden}
+.catbar .fill{display:block;height:100%}
+.foot{display:flex;gap:8px;flex-wrap:wrap;margin-top:22px;align-items:center}
+.foot .who{flex-basis:100%;font-size:13px;color:var(--muted)}
+
+/* sheet + scanner */
+.scrim{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:20;display:flex;align-items:flex-end;justify-content:center}
+.sheet{background:var(--surface);color:var(--fg);width:100%;max-width:560px;border-radius:14px 14px 0 0;padding:16px max(16px,env(safe-area-inset-right,0px)) calc(16px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));display:grid;gap:12px;max-height:92%;overflow:auto}
+.sheet h3{margin:0;font-size:18px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.scanner{position:fixed;inset:0;z-index:25;background:#000;color:#fff;display:flex;flex-direction:column}
+.scanner-head{padding:calc(14px + env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) 12px max(16px,env(safe-area-inset-left,0px));display:flex;justify-content:space-between;align-items:center;gap:12px}
+.scanner-head b{font-size:16px}
+.scanner-head .btn{background:rgba(255,255,255,.12);color:#fff;border-color:rgba(255,255,255,.25)}
+.reader-wrap{flex:1;display:flex;align-items:center;overflow:hidden;min-height:0}
+#reader{width:100%}
+#reader video{display:block}
+.scanner-foot{padding:14px max(16px,env(safe-area-inset-right,0px)) calc(18px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));display:grid;gap:10px;text-align:center}
+.scanner-foot .hint{color:#c9c9c9}
+.scanner-foot .btn{background:rgba(255,255,255,.12);color:#fff;border-color:rgba(255,255,255,.25)}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));background:var(--fg);color:var(--bg);padding:10px 16px;border-radius:999px;font-weight:600;font-size:14px;z-index:30;display:flex;align-items:center;gap:14px;max-width:calc(100% - 32px)}
+.toast button{font:inherit;font-weight:800;background:none;border:0;color:var(--accent);padding:0;cursor:pointer}
+
+/* sign-in */
+.auth{max-width:420px;margin:0 auto;padding:calc(48px + env(safe-area-inset-top,0px)) max(20px,env(safe-area-inset-right,0px)) 40px max(20px,env(safe-area-inset-left,0px))}
+.auth-mark{display:inline-block;background:var(--accent);color:var(--accent-ink);font-weight:800;font-size:13px;letter-spacing:.14em;text-transform:uppercase;padding:6px 10px;border-radius:6px}
+.auth h1{font-size:30px;line-height:1.1;margin:16px 0 6px;letter-spacing:-.01em;text-wrap:balance}
+.auth p{color:var(--muted);margin:0 0 20px}
+.boot{display:flex;align-items:center;justify-content:center;min-height:60vh;color:var(--muted)}
+</style>
+</head>
+<body>
+
+<div class="boot" id="boot">Loading…</div>
+
+<!-- sign-in -->
+<section class="auth" id="authView" hidden>
+  <span class="auth-mark">Slab Ledger</span>
+  <h1>Sign in to your ledger</h1>
+  <p>Your purchases sync to your account, so they're safe if you switch phones.</p>
+  <form class="card" id="authForm" autocomplete="on">
+    <div><label class="lbl" for="aEmail">Email</label><input class="in" id="aEmail" type="email" autocomplete="email" inputmode="email" required></div>
+    <div><label class="lbl" for="aPass">Password</label><input class="in" id="aPass" type="password" autocomplete="current-password" minlength="6" required></div>
+    <button class="btn primary" type="submit" id="aSubmit">Sign in</button>
+    <div class="note warn" id="aErr" hidden></div>
+    <div class="note info" id="aInfo" hidden></div>
+    <div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap">
+      <button class="btn link" type="button" id="aMode">New here? Create an account</button>
+      <button class="btn link" type="button" id="aReset">Forgot password</button>
+    </div>
+  </form>
+</section>
+
+<!-- app -->
+<div class="wrap" id="appView" hidden>
+  <header class="band" id="band" role="button" tabindex="0" aria-expanded="true" aria-label="Show or hide totals">
+    <div class="fold"><div class="fold-in"><div class="band-top"><span class="brand">Slab Ledger</span><span class="sync" id="sync">Connecting…</span></div></div></div>
+    <div class="today-label"><span class="spent">Spent today · </span><span id="todayDate"></span><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></div>
+    <div class="fold"><div class="fold-in">
+      <div class="today-total num" id="todayTotal">$0.00</div>
+      <div class="minis num">
+        <div class="mini">This week<b id="weekTotal">$0.00</b></div>
+        <div class="mini">This month<b id="monthTotal">$0.00</b></div>
+        <div class="mini">All time<b id="allTotal">$0.00</b></div>
+      </div>
+    </div></div>
+  </header>
+
+  <div class="tabs" role="tablist">
+    <button class="tab" role="tab" id="tabLog" aria-selected="true">Log a buy</button>
+    <button class="tab" role="tab" id="tabHist" aria-selected="false">History</button>
+  </div>
+
+  <section id="viewLog">
+    <form class="card" id="addForm" autocomplete="off">
+      <div>
+        <label class="lbl" for="cert">PSA cert number</label>
+        <div class="cert-row">
+          <input class="in" id="cert" inputmode="numeric" placeholder="Scan or type">
+          <button type="button" class="btn scan-btn" id="scanBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 7V4h3M21 7V4h-3M3 17v3h3M21 17v3h-3M7 8v8M10 8v8M13 8v8M17 8v8"/></svg>Scan</button>
+        </div>
+        <div class="note warn" id="dupNote" hidden style="margin-top:8px"></div>
+        <div class="hint" id="scanHint" hidden style="margin-top:6px"></div>
+      </div>
+      <div>
+        <label class="lbl" for="name">Card (optional)</label>
+        <input class="in" id="name" placeholder="e.g. 2003 Topps LeBron PSA 9">
+      </div>
+      <div>
+        <span class="lbl">Category</span>
+        <div class="cats" id="cats"></div>
+      </div>
+      <div>
+        <label class="lbl" for="price">Price paid</label>
+        <div class="price-wrap"><span>$</span><input class="in" id="price" inputmode="decimal" placeholder="0.00"></div>
+      </div>
+      <button class="btn primary" type="submit" id="addBtn">Add purchase</button>
+      <div class="note warn" id="formErr" hidden></div>
+    </form>
+
+    <div class="sec"><h2>Today</h2><span class="sum num" id="todaySum"></span></div>
+    <div class="list" id="todayList"></div>
+  </section>
+
+  <section id="viewHist" hidden>
+    <div class="card">
+      <div class="hist-controls">
+        <div><label class="lbl" for="pickDate">Pick a date</label><input class="in" type="date" id="pickDate"></div>
+        <button class="btn" id="todayBtn" type="button">Today</button>
+      </div>
+      <div><label class="lbl" for="search">Find a cert number</label><input class="in mono" id="search" inputmode="numeric" placeholder="Search cert #"></div>
+    </div>
+
+    <div id="dayDetail">
+      <div class="sec"><h2 id="dayTitle">—</h2><span class="sum num" id="daySum"></span></div>
+      <div class="catbars" id="dayCats"></div>
+      <div class="list" id="dayList" style="margin-top:10px"></div>
+    </div>
+
+    <div id="searchResults" hidden>
+      <div class="sec"><h2>Matches</h2><span class="sum num" id="searchSum"></span></div>
+      <div class="list" id="searchList"></div>
+    </div>
+
+    <div class="sec"><h2>Days with buys</h2></div>
+    <div class="list" id="dayIndex"></div>
+
+    <div class="foot">
+      <button class="btn" id="exportBtn" type="button">Export CSV</button>
+      <button class="btn" id="importBtn" type="button">Import CSV</button>
+      <input type="file" id="importFile" accept=".csv,text/csv" hidden>
+      <span class="who" id="who"></span>
+      <button class="btn link" id="signOut" type="button">Sign out</button>
+    </div>
+  </section>
+</div>
+
+<!-- edit sheet -->
+<div class="scrim" id="scrim" hidden>
+  <form class="sheet" id="editForm" autocomplete="off">
+    <h3>Edit purchase</h3>
+    <div class="hint" id="editWhen"></div>
+    <div><label class="lbl" for="eCert">PSA cert number</label><input class="in mono" id="eCert" inputmode="numeric"></div>
+    <div><label class="lbl" for="eName">Card</label><input class="in" id="eName"></div>
+    <div><span class="lbl">Category</span><div class="cats" id="eCats"></div></div>
+    <div><label class="lbl" for="ePrice">Price paid</label><div class="price-wrap"><span>$</span><input class="in" id="ePrice" inputmode="decimal"></div></div>
+    <div class="row2"><button class="btn" type="button" id="eCancel">Cancel</button><button class="btn primary" type="submit">Save</button></div>
+    <button class="btn danger" type="button" id="eDelete">Delete purchase</button>
+    <div class="row2" id="eConfirm" hidden><button class="btn" type="button" id="eKeep">Keep it</button><button class="btn danger" type="button" id="eDeleteYes">Yes, delete</button></div>
+  </form>
+</div>
+
+<!-- live scanner -->
+<div class="scanner" id="scanner" hidden>
+  <div class="scanner-head"><b>Scan slab barcode</b><button class="btn" type="button" id="scanClose">Cancel</button></div>
+  <div class="reader-wrap"><div id="reader"></div></div>
+  <div class="scanner-foot">
+    <div class="hint" id="scanStatus">Point the camera at the barcode on the slab label.</div>
+    <button class="btn" type="button" id="scanPhoto">Use a photo instead</button>
+    <input type="file" id="scanFile" accept="image/*" hidden>
+  </div>
+</div>
+<div id="fileReader" hidden></div>
+
+<div class="toast" id="toast" hidden></div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<script>
+/* ---------- Firebase ---------- */
+const firebaseConfig={
+  apiKey:"AIzaSyAuhyPFkMKbHNlgPYI1NWJk-EeGBeQTuRM",
+  authDomain:"slab-ledger.firebaseapp.com",
+  projectId:"slab-ledger",
+  storageBucket:"slab-ledger.firebasestorage.app",
+  messagingSenderId:"148338078014",
+  appId:"1:148338078014:web:6729bca33789f88787bc6f"
+};
+firebase.initializeApp(firebaseConfig);
+const auth=firebase.auth();
+const fs=firebase.firestore();
+fs.enablePersistence({synchronizeTabs:true}).catch(()=>{});
+
+const CATS=[{k:"pokemon",n:"Pokémon"},{k:"basketball",n:"Basketball"},{k:"baseball",n:"Baseball"},{k:"football",n:"Football"}];
+const catName=k=>(CATS.find(c=>c.k===k)||{n:"Other"}).n;
+const $=id=>document.getElementById(id);
+let coll=null,unsub=null,entries=[],ready=false,selCat="pokemon",editCat="pokemon",editing=null,histDay=null,lastAddedId=null;
+
+/* ---------- helpers ---------- */
+const pad=n=>String(n).padStart(2,"0");
+const dayKey=d=>d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());
+const money=c=>(c<0?"-":"")+"$"+(Math.abs(c)/100).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});
+function parseCents(s){s=String(s||"").replace(/[$,\s]/g,"");if(!/^\d*\.?\d{0,2}$/.test(s)||s===""||s===".")return null;return Math.round(parseFloat(s)*100);}
+const fmtTime=ts=>new Date(ts).toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit"});
+function fmtDay(k,long){const[y,m,d]=k.split("-").map(Number);return new Date(y,m-1,d).toLocaleDateString("en-US",long?{weekday:"long",month:"long",day:"numeric",year:"numeric"}:{weekday:"short",month:"short",day:"numeric",year:"numeric"});}
+const cleanCert=s=>String(s||"").trim().replace(/\s+/g,"");
+const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const sum=a=>a.reduce((t,e)=>t+(e.cents||0),0);
+function toast(msg,actLabel,act){const t=$("toast");t.innerHTML="";const s=document.createElement("span");s.textContent=msg;t.appendChild(s);
+  if(actLabel){const b=document.createElement("button");b.type="button";b.textContent=actLabel;b.onclick=()=>{t.hidden=true;act();};t.appendChild(b);}
+  t.hidden=false;clearTimeout(toast.h);toast.h=setTimeout(()=>t.hidden=true,actLabel?5000:2200);}
+
+/* ---------- auth ---------- */
+let signUp=false;
+function setMode(up){signUp=up;$("aSubmit").textContent=up?"Create account":"Sign in";$("aMode").textContent=up?"Have an account? Sign in":"New here? Create an account";
+  $("aPass").autocomplete=up?"new-password":"current-password";$("aErr").hidden=true;$("aInfo").hidden=true;}
+$("aMode").onclick=()=>setMode(!signUp);
+function authMsg(e){const c=e&&e.code||"";
+  if(c.includes("invalid-email"))return"That email address doesn't look right.";
+  if(c.includes("invalid-credential")||c.includes("wrong-password")||c.includes("user-not-found"))return"Email or password is wrong. Check both, or create an account if you're new.";
+  if(c.includes("email-already-in-use"))return"An account already exists for that email. Tap Sign in instead.";
+  if(c.includes("weak-password"))return"Use a password with at least 6 characters.";
+  if(c.includes("operation-not-allowed"))return"Email sign-in isn't turned on in Firebase yet. Enable Email/Password under Authentication → Sign-in method.";
+  if(c.includes("network"))return"No connection. Check your signal and try again.";
+  if(c.includes("too-many-requests"))return"Too many tries. Wait a minute, then try again.";
+  return"Sign-in failed ("+(c||"unknown error")+").";}
+$("authForm").onsubmit=async ev=>{ev.preventDefault();const em=$("aEmail").value.trim(),pw=$("aPass").value;$("aErr").hidden=true;$("aSubmit").disabled=true;
+  try{if(signUp)await auth.createUserWithEmailAndPassword(em,pw);else await auth.signInWithEmailAndPassword(em,pw);}
+  catch(e){$("aErr").textContent=authMsg(e);$("aErr").hidden=false;}
+  finally{$("aSubmit").disabled=false;}};
+$("aReset").onclick=async()=>{const em=$("aEmail").value.trim();$("aErr").hidden=true;$("aInfo").hidden=true;
+  if(!em){$("aErr").textContent="Type your email above first, then tap Forgot password.";$("aErr").hidden=false;return;}
+  try{await auth.sendPasswordResetEmail(em);$("aInfo").textContent="Reset link sent to "+em+". Check your inbox and spam folder.";$("aInfo").hidden=false;}
+  catch(e){$("aErr").textContent=authMsg(e);$("aErr").hidden=false;}};
+$("signOut").onclick=()=>auth.signOut();
+
+auth.onAuthStateChanged(u=>{
+  $("boot").hidden=true;
+  if(unsub){unsub();unsub=null;}
+  if(!u){entries=[];coll=null;ready=false;$("appView").hidden=true;$("authView").hidden=false;setMode(false);return;}
+  $("authView").hidden=true;$("appView").hidden=false;$("who").textContent="Signed in as "+(u.email||"you");
+  coll=fs.collection("users").doc(u.uid).collection("purchases");ready=false;render();
+  unsub=coll.orderBy("ts","desc").onSnapshot({includeMetadataChanges:true},snap=>{
+    entries=snap.docs.map(d=>Object.assign({id:d.id},d.data()));ready=true;
+    $("sync").textContent=snap.metadata.hasPendingWrites?"Saving…":snap.metadata.fromCache?"Offline · saved on phone":"Synced";
+    render();
+  },err=>{$("sync").textContent="Sync error";toast(err.code==="permission-denied"?"Database rules are blocking access. Check the Firestore rules.":"Couldn't load purchases.");});
+});
+
+/* ---------- category chips ---------- */
+function drawCats(box,cur,onPick){box.innerHTML=CATS.map(c=>`<button type="button" class="cat" data-k="${c.k}" aria-pressed="${c.k===cur}"><i style="background:var(--c-${c.k})"></i>${c.n}</button>`).join("");
+  box.onclick=e=>{const b=e.target.closest(".cat");if(!b)return;onPick(b.dataset.k);box.querySelectorAll(".cat").forEach(x=>x.setAttribute("aria-pressed",x===b));};}
+drawCats($("cats"),selCat,k=>selCat=k);
+
+/* ---------- rendering ---------- */
+function slabHTML(e,showDate){return `<div class="swipe" data-id="${esc(e.id)}"><button type="button" class="swipe-del" tabindex="-1">Delete</button><button type="button" class="slab${e.id===lastAddedId?" new":""}" data-id="${esc(e.id)}">
+  <div class="slab-top"><span class="cat-tag"><i style="background:var(--c-${esc(e.cat)})"></i>${esc(catName(e.cat))}</span><span class="time">${showDate?esc(fmtDay(e.day))+" · ":""}${esc(fmtTime(e.ts))}</span></div>
+  <div class="slab-body"><div class="left"><div class="slab-name">${esc(e.name||"Untitled slab")}</div>${e.cert?`<div class="slab-cert">CERT #${esc(e.cert)}</div>`:""}</div><div class="slab-price num">${money(e.cents)}</div></div></button></div>`;}
+
+function render(){
+  const now=new Date(),tk=dayKey(now);
+  const mon=new Date(now);mon.setHours(0,0,0,0);mon.setDate(mon.getDate()-((mon.getDay()+6)%7));
+  const monthStart=new Date(now.getFullYear(),now.getMonth(),1).getTime();
+  const today=entries.filter(e=>e.day===tk);
+  $("todayTotal").textContent=money(sum(today));
+  $("weekTotal").textContent=money(sum(entries.filter(e=>e.ts>=mon.getTime())));
+  $("monthTotal").textContent=money(sum(entries.filter(e=>e.ts>=monthStart)));
+  $("allTotal").textContent=money(sum(entries));
+  $("todayDate").textContent=now.toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"});
+  $("todaySum").textContent=today.length?today.length+(today.length===1?" buy · ":" buys · ")+money(sum(today)):"";
+  $("todayList").innerHTML=today.length?today.map(e=>slabHTML(e)).join(""):`<div class="empty">${ready?"No buys logged today. Tap Scan or type a cert number above, add the price, and tap Add purchase.":"Loading your purchases…"}</div>`;
+  renderHist();
+}
+function renderHist(){
+  if(!histDay)histDay=dayKey(new Date());
+  $("pickDate").value=histDay;
+  const list=entries.filter(e=>e.day===histDay);
+  $("dayTitle").textContent=fmtDay(histDay);
+  $("daySum").textContent=list.length?money(sum(list)):"";
+  $("dayList").innerHTML=list.length?list.map(e=>slabHTML(e)).join(""):`<div class="empty">No buys on this day.</div>`;
+  const tot=sum(list)||1;
+  $("dayCats").innerHTML=list.length?CATS.map(c=>{const s=sum(list.filter(e=>e.cat===c.k));return s?`<div class="catbar"><span>${c.n}</span><span class="track"><span class="fill" style="width:${(s/tot*100).toFixed(1)}%;background:var(--c-${c.k})"></span></span><b class="num">${money(s)}</b></div>`:"";}).join(""):"";
+  const days={};entries.forEach(e=>{(days[e.day]=days[e.day]||[]).push(e);});
+  const keys=Object.keys(days).sort().reverse();
+  $("dayIndex").innerHTML=keys.length?keys.map(k=>`<button type="button" class="day-row" data-day="${k}" aria-current="${k===histDay}"><span><span class="d">${esc(fmtDay(k))}</span><br><span class="c">${days[k].length} ${days[k].length===1?"buy":"buys"}</span></span><b class="num">${money(sum(days[k]))}</b></button>`).join(""):`<div class="empty">${ready?"Your days will show up here once you log a buy.":"Loading…"}</div>`;
+  const q=cleanCert($("search").value);
+  if(q){const m=entries.filter(e=>(e.cert||"").includes(q));$("searchResults").hidden=false;$("dayDetail").hidden=true;
+    $("searchSum").textContent=m.length?money(sum(m)):"";
+    $("searchList").innerHTML=m.length?m.map(e=>slabHTML(e,true)).join(""):`<div class="empty">No purchase with that cert number.</div>`;}
+  else{$("searchResults").hidden=true;$("dayDetail").hidden=false;}
+}
+setInterval(()=>{const k=dayKey(new Date());if(k!==render.lastDay){render.lastDay=k;histDay=null;render();}},60000);render.lastDay=dayKey(new Date());
+
+/* ---------- banner ---------- */
+function setBand(min){$("band").classList.toggle("min",min);$("band").setAttribute("aria-expanded",!min);try{localStorage.setItem("bandMin",min?"1":"0");}catch(_){}}
+try{if(localStorage.getItem("bandMin")==="1")setBand(true);}catch(_){}
+$("band").onclick=()=>{$("band").classList.add("anim");setBand(!$("band").classList.contains("min"));};
+$("band").onkeydown=e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();$("band").click();}};
+
+/* ---------- tabs + history controls ---------- */
+function showTab(h){$("tabLog").setAttribute("aria-selected",!h);$("tabHist").setAttribute("aria-selected",h);$("viewLog").hidden=h;$("viewHist").hidden=!h;}
+$("tabLog").onclick=()=>showTab(false);$("tabHist").onclick=()=>showTab(true);
+$("pickDate").onchange=e=>{if(e.target.value){histDay=e.target.value;renderHist();}};
+$("todayBtn").onclick=()=>{histDay=dayKey(new Date());$("search").value="";renderHist();};
+$("dayIndex").onclick=e=>{const b=e.target.closest(".day-row");if(!b)return;histDay=b.dataset.day;$("search").value="";renderHist();window.scrollTo({top:0,behavior:"smooth"});};
+$("search").oninput=()=>renderHist();
+
+/* ---------- duplicate check ---------- */
+function checkDup(){const c=cleanCert($("cert").value);const n=$("dupNote");const hit=c?entries.find(e=>e.cert===c):null;
+  if(hit){n.textContent=`You already logged cert #${c} on ${fmtDay(hit.day)} for ${money(hit.cents)}.`;n.hidden=false;}else n.hidden=true;}
+$("cert").oninput=checkDup;
+
+/* ---------- add ---------- */
+$("addForm").onsubmit=ev=>{ev.preventDefault();const err=$("formErr");err.hidden=true;
+  const cents=parseCents($("price").value);
+  if(cents===null||cents<=0){err.textContent="Enter the price you paid, like 45 or 45.99.";err.hidden=false;$("price").focus();return;}
+  if(!coll)return;
+  const now=new Date();const rec={cert:cleanCert($("cert").value),name:$("name").value.trim(),cat:selCat,cents,ts:now.getTime(),day:dayKey(now)};
+  const ref=coll.doc();lastAddedId=ref.id;
+  ref.set(rec).catch(()=>toast("Couldn't save that purchase. Try adding it again."));
+  $("cert").value="";$("name").value="";$("price").value="";$("dupNote").hidden=true;$("scanHint").hidden=true;
+  $("price").blur();toast("Added "+money(cents)+" at "+fmtTime(rec.ts));};
+
+/* ---------- edit / delete ---------- */
+function openEdit(id){const e=entries.find(x=>x.id===id);if(!e)return;editing=e;editCat=e.cat;
+  $("eCert").value=e.cert||"";$("eName").value=e.name||"";$("ePrice").value=(e.cents/100).toFixed(2);
+  $("editWhen").textContent="Logged "+fmtDay(e.day,true)+" at "+fmtTime(e.ts);
+  drawCats($("eCats"),editCat,k=>editCat=k);$("eConfirm").hidden=true;$("eDelete").hidden=false;$("scrim").hidden=false;}
+const closeEdit=()=>{$("scrim").hidden=true;editing=null;};
+$("eCancel").onclick=closeEdit;$("scrim").onclick=e=>{if(e.target.id==="scrim")closeEdit();};
+$("editForm").onsubmit=ev=>{ev.preventDefault();if(!editing||!coll)return;
+  const cents=parseCents($("ePrice").value);if(cents===null||cents<=0){toast("Enter a valid price");return;}
+  const rec={cert:cleanCert($("eCert").value),name:$("eName").value.trim(),cat:editCat,cents,ts:editing.ts,day:editing.day};
+  coll.doc(editing.id).set(rec).catch(()=>toast("Couldn't save. Try again."));toast("Saved");closeEdit();};
+$("eDelete").onclick=()=>{$("eDelete").hidden=true;$("eConfirm").hidden=false;};
+$("eKeep").onclick=()=>{$("eConfirm").hidden=true;$("eDelete").hidden=false;};
+$("eDeleteYes").onclick=()=>{if(!editing)return;const id=editing.id;closeEdit();removeEntry(id);};
+
+/* ---------- swipe left to delete ---------- */
+const OPEN_W=96;let drag=null,openSwipe=null,suppressClick=false;
+function closeSwipe(w){if(!w)return;w.classList.remove("open");const s=w.querySelector(".slab");if(s)s.style.transform="";
+  setTimeout(()=>{if(!w.classList.contains("open")&&!(drag&&drag.w===w))w.classList.remove("reveal");},230);if(openSwipe===w)openSwipe=null;}
+function removeEntry(id){const e=entries.find(x=>x.id===id);if(!e||!coll)return;const{id:_,...data}=e;
+  coll.doc(id).delete().catch(()=>toast("Couldn't delete. Try again."));
+  toast("Deleted "+money(e.cents),"Undo",()=>{coll.doc(id).set(data).catch(()=>toast("Couldn't restore. Add it again."));toast("Restored");});}
+document.addEventListener("pointerdown",e=>{const s=e.target.closest(".slab");if(!s||e.button>0)return;const w=s.parentElement;
+  if(openSwipe&&openSwipe!==w)closeSwipe(openSwipe);
+  drag={s,w,x:e.clientX,y:e.clientY,base:w.classList.contains("open")?-OPEN_W:0,dx:0,lock:null,pid:e.pointerId};drag.dx=drag.base;});
+document.addEventListener("pointermove",e=>{if(!drag||e.pointerId!==drag.pid)return;const dx=e.clientX-drag.x,dy=e.clientY-drag.y;
+  if(!drag.lock){if(Math.abs(dx)<8&&Math.abs(dy)<8)return;drag.lock=Math.abs(dx)>Math.abs(dy)?"x":"y";
+    if(drag.lock==="x"){drag.s.classList.add("dragging");drag.w.classList.add("reveal");try{drag.s.setPointerCapture(e.pointerId);}catch(_){}}}
+  if(drag.lock!=="x")return;e.preventDefault();drag.dx=Math.min(0,drag.base+dx);drag.s.style.transform=`translateX(${drag.dx}px)`;},{passive:false});
+function endDrag(e,cancel){if(!drag||e.pointerId!==drag.pid)return;const d=drag;drag=null;if(d.lock!=="x")return;
+  d.s.classList.remove("dragging");suppressClick=true;setTimeout(()=>suppressClick=false,80);const w=d.s.offsetWidth;
+  if(!cancel&&d.dx<-w*0.5){d.s.style.transform=`translateX(${-w}px)`;removeEntry(d.w.dataset.id);}
+  else if(!cancel&&d.dx<-OPEN_W/2){d.s.style.transform=`translateX(${-OPEN_W}px)`;d.w.classList.add("open");openSwipe=d.w;}
+  else closeSwipe(d.w);}
+document.addEventListener("pointerup",e=>endDrag(e,false));
+document.addEventListener("pointercancel",e=>endDrag(e,true));
+document.addEventListener("click",e=>{if(suppressClick)return;
+  const del=e.target.closest(".swipe-del");if(del){const w=del.parentElement;w.querySelector(".slab").style.transform=`translateX(${-w.offsetWidth}px)`;removeEntry(w.dataset.id);return;}
+  const s=e.target.closest(".slab");if(s){if(s.parentElement.classList.contains("open")){closeSwipe(s.parentElement);return;}openEdit(s.dataset.id);return;}
+  if(openSwipe&&!e.target.closest(".toast"))closeSwipe(openSwipe);});
+
+/* ---------- live barcode scanner ---------- */
+const FORMATS=()=>[Html5QrcodeSupportedFormats.CODE_128,Html5QrcodeSupportedFormats.CODE_39,Html5QrcodeSupportedFormats.QR_CODE];
+let qr=null,scanning=false;
+function certFrom(text){text=String(text||"").trim();const m=text.match(/cert\/(\d{6,12})/i);if(m)return m[1];const d=text.replace(/\D/g,"");return d.length>=6?d:text;}
+function gotCert(text){const cert=certFrom(text);$("cert").value=cert;checkDup();
+  const h=$("scanHint");h.textContent="Scanned cert #"+cert+". Check it matches the label.";h.hidden=false;
+  if(navigator.vibrate)try{navigator.vibrate(60);}catch(_){}
+  closeScanner();setTimeout(()=>$("price").focus(),150);}
+async function openScanner(){
+  if(!window.Html5Qrcode){toast("Scanner didn't load. Check your connection.");return;}
+  $("scanner").hidden=false;$("scanStatus").textContent="Starting camera…";
+  try{
+    qr=new Html5Qrcode("reader",{formatsToSupport:FORMATS(),verbose:false,experimentalFeatures:{useBarCodeDetectorIfSupported:true}});
+    await qr.start({facingMode:"environment"},{fps:12,qrbox:(w,h)=>({width:Math.floor(w*0.88),height:Math.max(90,Math.floor(h*0.26))}),disableFlip:true},
+      text=>{if(!scanning)return;scanning=false;gotCert(text);},()=>{});
+    scanning=true;$("scanStatus").textContent="Point the camera at the barcode on the slab label. Hold steady about 4–6 inches away.";
+  }catch(err){
+    const msg=String(err&&(err.name||err)||"");
+    $("scanStatus").textContent=/NotAllowed|Permission/i.test(msg)?"Camera access is blocked. Allow camera access for this site in Settings, or use a photo instead.":"Couldn't start the camera. Use a photo instead, or type the number.";
+  }
+}
+async function closeScanner(){scanning=false;const q=qr;qr=null;
+  if(q){try{if(q.isScanning)await q.stop();}catch(_){}try{q.clear();}catch(_){}}
+  $("reader").innerHTML="";$("scanner").hidden=true;}
+$("scanBtn").onclick=openScanner;
+$("scanClose").onclick=closeScanner;
+$("scanPhoto").onclick=()=>$("scanFile").click();
+$("scanFile").onchange=async e=>{const f=e.target.files&&e.target.files[0];e.target.value="";if(!f)return;
+  $("scanStatus").textContent="Reading photo…";
+  try{const fr=new Html5Qrcode("fileReader",{formatsToSupport:FORMATS(),verbose:false});const txt=await fr.scanFile(f,false);try{fr.clear();}catch(_){}gotCert(txt);}
+  catch(_){$("scanStatus").textContent="Couldn't find a barcode in that photo. Fill the frame with the barcode and try again.";}};
+
+/* ---------- export / import ---------- */
+function csvOf(rows){return rows.map(r=>r.map(v=>{v=String(v??"");return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;}).join(",")).join("\n");}
+$("exportBtn").onclick=async()=>{if(!entries.length){toast("Nothing to export yet");return;}
+  const rows=[["Date","Time","Category","Card","PSA cert","Price"]].concat([...entries].sort((a,b)=>a.ts-b.ts).map(e=>[e.day,fmtTime(e.ts),catName(e.cat),e.name||"",e.cert||"",(e.cents/100).toFixed(2)]));
+  const name="slab-ledger-"+dayKey(new Date())+".csv";const blob=new Blob([csvOf(rows)],{type:"text/csv"});
+  try{const file=new File([blob],name,{type:"text/csv"});if(navigator.canShare&&navigator.canShare({files:[file]})){await navigator.share({files:[file],title:name});return;}}catch(e){if(e&&e.name==="AbortError")return;}
+  const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),4000);};
+function parseCSV(t){const rows=[];let row=[],f="",q=false;t=t.replace(/^﻿/,"");
+  for(let i=0;i<t.length;i++){const c=t[i];
+    if(q){if(c==='"'){if(t[i+1]==='"'){f+='"';i++;}else q=false;}else f+=c;}
+    else if(c==='"')q=true;else if(c===","){row.push(f);f="";}else if(c==="\n"||c==="\r"){if(c==="\r"&&t[i+1]==="\n")i++;row.push(f);rows.push(row);row=[];f="";}else f+=c;}
+  if(f!==""||row.length){row.push(f);rows.push(row);}return rows.filter(r=>r.some(x=>x.trim()!==""));}
+function parseTime(s){const m=String(s||"").trim().match(/^(\d{1,2}):(\d{2})\s*([AP]M)?$/i);if(!m)return[12,0];let h=+m[1];const mi=+m[2];if(m[3]){const pm=/p/i.test(m[3]);if(h===12)h=pm?12:0;else if(pm)h+=12;}return[h,mi];}
+$("importBtn").onclick=()=>$("importFile").click();
+$("importFile").onchange=async e=>{const f=e.target.files&&e.target.files[0];e.target.value="";if(!f||!coll)return;
+  try{const rows=parseCSV(await f.text());const head=rows.shift().map(h=>h.trim().toLowerCase());
+    const col=n=>head.indexOf(n);const iD=col("date"),iT=col("time"),iC=col("category"),iN=col("card"),iX=col("psa cert"),iP=col("price");
+    if(iD<0||iP<0){toast("That file isn't a Slab Ledger export.");return;}
+    const have=new Set(entries.map(x=>x.day+"|"+fmtTime(x.ts)+"|"+x.cents+"|"+(x.cert||"")));
+    const recs=[];
+    rows.forEach(r=>{const day=(r[iD]||"").trim();if(!/^\d{4}-\d{2}-\d{2}$/.test(day))return;const cents=parseCents(r[iP]);if(cents===null)return;
+      const[y,mo,d]=day.split("-").map(Number);const[h,mi]=parseTime(iT>=0?r[iT]:"");const ts=new Date(y,mo-1,d,h,mi).getTime();
+      const cert=iX>=0?cleanCert(r[iX]):"";const key=day+"|"+fmtTime(ts)+"|"+cents+"|"+cert;if(have.has(key))return;have.add(key);
+      const cn=(iC>=0?r[iC]:"").trim().toLowerCase();const cat=(CATS.find(c=>c.n.toLowerCase()===cn||c.k===cn)||CATS[0]).k;
+      recs.push({cert,name:iN>=0?(r[iN]||"").trim():"",cat,cents,ts,day});});
+    if(!recs.length){toast("Nothing new to import.");return;}
+    for(let i=0;i<recs.length;i+=400){const b=fs.batch();recs.slice(i,i+400).forEach(rec=>b.set(coll.doc(),rec));b.commit().catch(()=>toast("Some rows didn't save. Try importing again."));}
+    toast("Imported "+recs.length+(recs.length===1?" purchase":" purchases"));
+  }catch(_){toast("Couldn't read that file.");}};
+</script>
+</body>
+</html>

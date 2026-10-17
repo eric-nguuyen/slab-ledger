@@ -37,29 +37,21 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 .num{font-variant-numeric:tabular-nums}
 .mono{font-family:var(--f-mono)}
 
-/* total band */
-.band{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--accent);color:var(--accent-ink);margin:0 calc(-1 * max(16px,env(safe-area-inset-left,0px)));padding:14px max(16px,env(safe-area-inset-right,0px)) 12px max(16px,env(safe-area-inset-left,0px));cursor:pointer;user-select:none;-webkit-user-select:none}
+/* total band: the date row stays put; the totals below it slide shut. Only height, opacity and transform animate. */
+.band{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--accent);color:var(--accent-ink);margin:0 calc(-1 * max(16px,env(safe-area-inset-left,0px)));padding:12px max(16px,env(safe-area-inset-right,0px)) 12px max(16px,env(safe-area-inset-left,0px));cursor:pointer;user-select:none;-webkit-user-select:none;overflow:hidden}
 .band:focus-visible{outline:2px solid var(--fg);outline-offset:-4px}
-.band-top{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
-.brand{font-weight:800;font-size:13px;letter-spacing:.14em;text-transform:uppercase}
-.sync{font-size:12px;opacity:.85}
-.today-label{font-size:12px;letter-spacing:.08em;text-transform:uppercase;opacity:.85;margin-top:6px;display:flex;align-items:center;gap:4px}
+.band-row{display:flex;align-items:center;gap:8px;font-size:15px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;line-height:1.3}
+.chev{width:16px;height:16px;margin-left:auto;opacity:.9;transition:transform .32s cubic-bezier(.2,.8,.2,1)}
+.band.min .chev{transform:rotate(180deg)}
+.band-body{padding-top:6px;transform-origin:top center}
+.band.min .band-body{display:none}
+.spent-lbl{font-size:12px;letter-spacing:.08em;text-transform:uppercase;opacity:.85}
 .today-total{font-weight:800;font-size:44px;line-height:1.05;letter-spacing:-.01em}
 .minis{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:8px}
 .mini{font-size:11px;letter-spacing:.06em;text-transform:uppercase;opacity:.85}
 .mini b{display:block;font-size:16px;letter-spacing:0;text-transform:none;opacity:1;font-weight:700}
-.chev{width:14px;height:14px;margin-left:auto;opacity:.85}
-.fold{display:grid;grid-template-rows:1fr;opacity:1}
-.fold-in{overflow:hidden;min-height:0}
-.spent{display:inline-block;white-space:nowrap;overflow:hidden;max-width:12em;vertical-align:bottom}
-.band.min{padding-block:10px}
-.band.min .fold{grid-template-rows:0fr;opacity:0}
-.band.min .spent{max-width:0;opacity:0}
-.band.min .today-label{margin-top:0;font-size:15px;font-weight:700;letter-spacing:.06em;opacity:1}
-.band.min .chev{transform:rotate(180deg)}
-@media (prefers-reduced-motion:no-preference){
-  .band.anim,.band.anim .fold,.band.anim .spent,.band.anim .today-label,.band.anim .chev{transition:grid-template-rows .32s cubic-bezier(.2,.8,.2,1),opacity .24s ease,max-width .32s cubic-bezier(.2,.8,.2,1),padding .32s cubic-bezier(.2,.8,.2,1),margin .32s cubic-bezier(.2,.8,.2,1),font-size .32s cubic-bezier(.2,.8,.2,1),transform .32s ease}
-}
+.band-foot{display:flex;justify-content:space-between;gap:12px;margin-top:10px;font-size:11px;opacity:.8}
+.brand{font-weight:800;letter-spacing:.14em;text-transform:uppercase}
 
 /* tabs */
 .tabs{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:14px 0}
@@ -196,16 +188,17 @@ input.in{width:100%;font:inherit;font-size:17px;padding:11px 12px;border:1px sol
 <!-- app -->
 <div class="wrap" id="appView" hidden>
   <header class="band" id="band" role="button" tabindex="0" aria-expanded="true" aria-label="Show or hide totals">
-    <div class="fold"><div class="fold-in"><div class="band-top"><span class="brand">Slab Ledger</span><span class="sync" id="sync">Connecting…</span></div></div></div>
-    <div class="today-label"><span class="spent">Spent today · </span><span id="todayDate"></span><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></div>
-    <div class="fold"><div class="fold-in">
+    <div class="band-row"><span id="todayDate"></span><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></div>
+    <div class="band-body" id="bandBody">
+      <div class="spent-lbl">Spent today</div>
       <div class="today-total num" id="todayTotal">$0.00</div>
       <div class="minis num">
         <div class="mini">This week<b id="weekTotal">$0.00</b></div>
         <div class="mini">This month<b id="monthTotal">$0.00</b></div>
         <div class="mini">All time<b id="allTotal">$0.00</b></div>
       </div>
-    </div></div>
+      <div class="band-foot"><span class="brand">Slab Ledger</span><span id="sync">Connecting…</span></div>
+    </div>
   </header>
 
   <div class="tabs" role="tablist">
@@ -312,7 +305,7 @@ input.in{width:100%;font:inherit;font-size:17px;padding:11px 12px;border:1px sol
 <script src="https://unpkg.com/@zxing/library@0.21.3/umd/index.min.js"></script>
 <script>
 /* ---------- updates: GitHub Pages lets phones reuse a saved copy for ~10 minutes, so check for a newer version on open ---------- */
-const APP_VERSION="1.6";
+const APP_VERSION="1.7";
 document.getElementById("verLabel").textContent="App version "+APP_VERSION;
 function busy(){return !document.getElementById("scanner").hidden||!document.getElementById("scrim").hidden||
   ["cert","name","price"].some(id=>document.getElementById(id).value.trim()!=="");}
@@ -441,9 +434,35 @@ function renderHist(){
 setInterval(()=>{const k=dayKey(new Date());if(k!==render.lastDay){render.lastDay=k;histDay=null;render();}},60000);render.lastDay=dayKey(new Date());
 
 /* ---------- banner ---------- */
-function setBand(min){$("band").classList.toggle("min",min);$("band").setAttribute("aria-expanded",!min);try{localStorage.setItem("bandMin",min?"1":"0");}catch(_){}}
-try{if(localStorage.getItem("bandMin")==="1")setBand(true);}catch(_){}
-$("band").onclick=()=>{$("band").classList.add("anim");setBand(!$("band").classList.contains("min"));};
+let bandAnims=[];
+function setBand(min,animate){const band=$("band"),body=$("bandBody");
+  /* start from wherever the bar is right now, so tapping mid-animation reverses smoothly */
+  const hNow=band.getBoundingClientRect().height,oNow=bandAnims.length?+getComputedStyle(body).opacity:null;
+  bandAnims.forEach(a=>a.cancel());bandAnims=[];
+  band.setAttribute("aria-expanded",!min);try{localStorage.setItem("bandMin",min?"1":"0");}catch(_){}
+  const still=!animate||!band.animate||matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if(still){band.classList.toggle("min",min);return;}
+  const ease="cubic-bezier(.2,.8,.2,1)",dur=320;
+  /* measure both heights with the final layout, then animate between them */
+  const wasMin=band.classList.contains("min");
+  band.classList.remove("min");const hOpen=band.offsetHeight;
+  band.classList.add("min");const hShut=band.offsetHeight;
+  band.classList.toggle("min",wasMin);
+  if(min){
+    band.querySelector(".chev").style.transform="rotate(180deg)";
+    const a=band.animate([{height:hNow+"px"},{height:hShut+"px"}],{duration:dur,easing:ease,fill:"forwards"});
+    const b=body.animate([{opacity:oNow??1,transform:"translateY(0)"},{opacity:0,transform:"translateY(-10px)"}],{duration:dur*0.7,easing:"ease-out",fill:"forwards"});
+    bandAnims=[a,b];
+    a.onfinish=()=>{band.classList.add("min");band.querySelector(".chev").style.transform="";bandAnims.forEach(x=>x.cancel());bandAnims=[];};
+  }else{
+    band.classList.remove("min");
+    const a=band.animate([{height:Math.min(hNow,hOpen)+"px"},{height:hOpen+"px"}],{duration:dur,easing:ease});
+    const b=body.animate([{opacity:oNow??0,transform:"translateY(-10px)"},{opacity:1,transform:"translateY(0)"}],{duration:dur,easing:"ease-out",delay:oNow===null?40:0,fill:"backwards"});
+    bandAnims=[a,b];
+    a.onfinish=()=>{bandAnims=[];};
+  }}
+try{if(localStorage.getItem("bandMin")==="1")setBand(true,false);}catch(_){}
+$("band").onclick=()=>setBand($("band").getAttribute("aria-expanded")==="true",true);
 $("band").onkeydown=e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();$("band").click();}};
 
 /* ---------- tabs + history controls ---------- */

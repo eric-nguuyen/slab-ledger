@@ -144,6 +144,9 @@ input.in{width:100%;font:inherit;font-size:17px;padding:11px 12px;border:1px sol
 .scan-guide{position:absolute;left:5%;width:90%;top:50%;transform:translateY(-50%);aspect-ratio:2.6/1;max-height:60%;border:3px solid #fff;border-radius:12px;box-shadow:0 0 0 9999px rgba(0,0,0,.42);pointer-events:none}
 .scan-guide::after{content:"";position:absolute;left:10px;right:10px;top:50%;height:2px;background:#ff4d64;opacity:.9}
 .scan-guide.hit{border-color:#5fd39a}
+.zoom-row{display:flex;justify-content:center;gap:8px}
+.zoom-row button{font:inherit;font-weight:700;font-size:14px;min-width:52px;padding:8px 12px;border-radius:999px;border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.1);color:#fff;cursor:pointer}
+.zoom-row button[aria-pressed="true"]{background:#fff;color:#000;border-color:#fff}
 @media (prefers-reduced-motion:no-preference){.scan-guide::after{animation:sweep 1.4s ease-in-out infinite alternate}@keyframes sweep{from{top:15%}to{top:85%}}}
 .scanner-foot{padding:14px max(16px,env(safe-area-inset-right,0px)) calc(18px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));display:grid;gap:10px;text-align:center}
 .scanner-foot .hint{color:#c9c9c9}
@@ -260,6 +263,7 @@ input.in{width:100%;font:inherit;font-size:17px;padding:11px 12px;border:1px sol
       <button class="btn" id="importBtn" type="button">Import CSV</button>
       <input type="file" id="importFile" accept=".csv,text/csv" hidden>
       <span class="who" id="who"></span>
+      <span class="who">App version 1.3</span>
       <button class="btn link" id="signOut" type="button">Sign out</button>
     </div>
   </section>
@@ -285,6 +289,7 @@ input.in{width:100%;font:inherit;font-size:17px;padding:11px 12px;border:1px sol
   <div class="scanner-head"><b>Scan slab barcode</b><button class="btn" type="button" id="scanClose">Cancel</button></div>
   <div class="reader-wrap" id="readerWrap"><video id="scanVideo" playsinline muted autoplay></video><div class="scan-guide" id="scanGuide"></div></div>
   <div class="scanner-foot">
+    <div class="zoom-row" id="zoomRow" hidden></div>
     <div class="hint" id="scanStatus">Point the camera at the barcode on the slab label.</div>
     <button class="btn" type="button" id="scanPhoto">Use a photo instead</button>
     <input type="file" id="scanFile" accept="image/*" hidden>
@@ -511,8 +516,8 @@ function gotCert(text){scanning=false;const cert=certFrom(text);$("scanGuide").c
   if(navigator.vibrate)try{navigator.vibrate(60);}catch(_){}
   setTimeout(()=>{closeScanner();$("cert").value=cert;checkDup();
     const h=$("scanHint");h.textContent="Scanned cert #"+cert+". Check it matches the label.";h.hidden=false;
-    setTimeout(()=>$("price").focus(),150);},250);}
-const TIP="Hold the phone 6–8 inches away so the barcode looks sharp, and line it up inside the box.";
+    setTimeout(()=>$("price").focus(),120);},120);}
+const TIP="Hold the phone about 8 inches back so the barcode looks sharp, and line it up inside the box.";
 async function scanFrame(){if(!scanning)return;const v=$("scanVideo");
   if(v.readyState>=2&&v.videoWidth&&!scanBusy){scanBusy=true;
     try{const vw=v.videoWidth,vh=v.videoHeight,wr=$("readerWrap").getBoundingClientRect(),gr=$("scanGuide").getBoundingClientRect();
@@ -526,7 +531,7 @@ async function scanFrame(){if(!scanning)return;const v=$("scanVideo");
       if(txt&&scanning){gotCert(txt);return;}
     }catch(_){}
     scanBusy=false;}
-  if(!tipShown&&Date.now()-scanStart>7000){tipShown=true;$("scanStatus").textContent="Still looking. If the barcode looks blurry, move the phone back a little. Tilt the slab slightly if there's glare.";}
+  if(!tipShown&&Date.now()-scanStart>4000){tipShown=true;$("scanStatus").textContent="Still looking. If light reflects off the barcode, tilt the slab a little. If it looks blurry, move the phone back"+($("zoomRow").hidden?".":" and use 2× or 3×.");}
   scanTimer=setTimeout(scanFrame,30);}
 async function openScanner(){
   $("scanGuide").classList.remove("hit");$("scanner").hidden=false;$("scanStatus").textContent="Starting camera…";
@@ -537,14 +542,24 @@ async function openScanner(){
     if($("scanner").hidden){stream.getTracks().forEach(t=>t.stop());stream=null;return;}
     const v=$("scanVideo");v.srcObject=stream;v.muted=true;v.setAttribute("playsinline","");await v.play().catch(()=>{});
     const track=stream.getVideoTracks()[0];
-    try{const c=track.getCapabilities?track.getCapabilities():{};const adv={};
-      if(c.focusMode&&c.focusMode.includes("continuous"))adv.focusMode="continuous";
-      if(c.zoom&&c.zoom.max>=1.5)adv.zoom=Math.min(2,c.zoom.max);
-      if(Object.keys(adv).length)await track.applyConstraints({advanced:[adv]});}catch(_){}
+    await setupCamera(track);
     scanning=true;scanBusy=false;tipShown=false;frameN=0;scanStart=Date.now();$("scanStatus").textContent=TIP;scanFrame();
   }catch(err){const n=String(err&&(err.name||err)||"");
     $("scanStatus").textContent=/NotAllowed|Permission|Security/i.test(n)?"Camera access is blocked. On iPhone go to Settings → Safari → Camera and choose Allow or Ask, then reopen the app.":/NotFound|Overconstrained/i.test(n)?"No usable camera found. Use a photo instead, or type the number.":"Couldn't start the camera ("+n+"). Use a photo instead, or type the number.";}
 }
+/* zoom: hold the phone farther back (where it can focus) and zoom in so the barcode still fills the box */
+async function applyZoom(track,z){try{await track.applyConstraints({advanced:[{zoom:z}]});}catch(_){return false;}
+  $("zoomRow").querySelectorAll("button").forEach(b=>b.setAttribute("aria-pressed",+b.dataset.z===z));try{localStorage.setItem("scanZoom",String(z));}catch(_){}return true;}
+async function setupCamera(track){const row=$("zoomRow");row.hidden=true;row.innerHTML="";let c={};
+  try{c=track.getCapabilities?track.getCapabilities():{};}catch(_){}
+  try{if(c.focusMode&&c.focusMode.includes("continuous"))await track.applyConstraints({advanced:[{focusMode:"continuous"}]});}catch(_){}
+  if(!c.zoom||!(c.zoom.max>=1.5))return;
+  const lo=Math.max(1,c.zoom.min||1),opts=[1,2,3].filter(z=>z>=lo&&z<=c.zoom.max);if(opts.length<2)return;
+  row.innerHTML=opts.map(z=>`<button type="button" data-z="${z}" aria-pressed="false">${z}×</button>`).join("");
+  row.onclick=e=>{const b=e.target.closest("button");if(b)applyZoom(track,+b.dataset.z);};
+  let want=2;try{const sv=+localStorage.getItem("scanZoom");if(opts.includes(sv))want=sv;}catch(_){}
+  if(!opts.includes(want))want=opts[opts.length-1];
+  if(await applyZoom(track,want))row.hidden=false;}
 function closeScanner(){scanning=false;clearTimeout(scanTimer);scanBusy=false;
   if(stream){stream.getTracks().forEach(t=>t.stop());stream=null;}
   const v=$("scanVideo");try{v.pause();}catch(_){}v.srcObject=null;$("scanner").hidden=true;}

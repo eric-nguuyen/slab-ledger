@@ -143,10 +143,20 @@ input.in{width:100%;font:inherit;font-size:17px;padding:11px 12px;border:1px sol
 #scanVideo{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transform-origin:50% 50%}
 .reader-wrap{touch-action:none}
 .zoom-pill{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);font:inherit;font-weight:700;font-size:14px;padding:6px 12px;border-radius:999px;border:0;background:rgba(0,0,0,.55);color:#fff;cursor:pointer;font-variant-numeric:tabular-nums}
-.scan-guide{position:absolute;left:5%;width:90%;top:50%;transform:translateY(-50%);aspect-ratio:2.6/1;max-height:60%;border:3px solid #fff;border-radius:12px;box-shadow:0 0 0 9999px rgba(0,0,0,.42);pointer-events:none}
-.scan-guide::after{content:"";position:absolute;left:10px;right:10px;top:50%;height:2px;background:#ff4d64;opacity:.9}
-.scan-guide.hit{border-color:#5fd39a}
-@media (prefers-reduced-motion:no-preference){.scan-guide::after{animation:sweep 1.4s ease-in-out infinite alternate}@keyframes sweep{from{top:15%}to{top:85%}}}
+/* corner brackets only; the camera view stays unshaded */
+.scan-guide{--gc:#fff;--len:30px;--th:4px;position:absolute;left:5%;width:90%;top:50%;transform:translateY(-50%);aspect-ratio:2.6/1;max-height:60%;pointer-events:none;
+  background:
+    linear-gradient(var(--gc),var(--gc)) top left/var(--len) var(--th) no-repeat,
+    linear-gradient(var(--gc),var(--gc)) top left/var(--th) var(--len) no-repeat,
+    linear-gradient(var(--gc),var(--gc)) top right/var(--len) var(--th) no-repeat,
+    linear-gradient(var(--gc),var(--gc)) top right/var(--th) var(--len) no-repeat,
+    linear-gradient(var(--gc),var(--gc)) bottom left/var(--len) var(--th) no-repeat,
+    linear-gradient(var(--gc),var(--gc)) bottom left/var(--th) var(--len) no-repeat,
+    linear-gradient(var(--gc),var(--gc)) bottom right/var(--len) var(--th) no-repeat,
+    linear-gradient(var(--gc),var(--gc)) bottom right/var(--th) var(--len) no-repeat;
+  filter:drop-shadow(0 0 2px rgba(0,0,0,.6))}
+.scan-guide.hit{--gc:#5fd39a}
+
 .scanner-foot{padding:14px max(16px,env(safe-area-inset-right,0px)) calc(18px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));display:grid;gap:10px;text-align:center}
 .scanner-foot .hint{color:#c9c9c9}
 .scanner-foot .btn{background:rgba(255,255,255,.12);color:#fff;border-color:rgba(255,255,255,.25)}
@@ -262,7 +272,7 @@ input.in{width:100%;font:inherit;font-size:17px;padding:11px 12px;border:1px sol
       <button class="btn" id="importBtn" type="button">Import CSV</button>
       <input type="file" id="importFile" accept=".csv,text/csv" hidden>
       <span class="who" id="who"></span>
-      <span class="who">App version 1.4</span>
+      <span class="who">App version 1.5</span>
       <button class="btn link" id="signOut" type="button">Sign out</button>
     </div>
   </section>
@@ -561,7 +571,7 @@ async function setupCamera(track){camTrack=track;hwMax=1;hwMin=1;let c={};
   try{c=track.getCapabilities?track.getCapabilities():{};}catch(_){}
   try{if(c.focusMode&&c.focusMode.includes("continuous"))await track.applyConstraints({advanced:[{focusMode:"continuous"}]});}catch(_){}
   if(c.zoom&&c.zoom.max>1&&(c.zoom.min||1)<=1){hwMax=Math.min(ZOOM_MAX,c.zoom.max);hwMin=c.zoom.min||1;}
-  setZoom(1);}
+  setZoom(zoomZ);}
 const dist=t=>Math.hypot(t[0].clientX-t[1].clientX,t[0].clientY-t[1].clientY);
 $("readerWrap").addEventListener("touchstart",e=>{if(e.touches.length===2){pinch={d:dist(e.touches),z:zoomZ};e.preventDefault();}},{passive:false});
 $("readerWrap").addEventListener("touchmove",e=>{if(pinch&&e.touches.length===2){e.preventDefault();setZoom(pinch.z*dist(e.touches)/pinch.d);}},{passive:false});
@@ -569,7 +579,7 @@ $("readerWrap").addEventListener("touchend",e=>{if(e.touches.length<2)pinch=null
 $("readerWrap").addEventListener("touchcancel",()=>{pinch=null;});
 ["gesturestart","gesturechange"].forEach(n=>$("readerWrap").addEventListener(n,e=>e.preventDefault()));
 $("zoomPill").onclick=()=>setZoom(1);
-function closeScanner(){scanning=false;clearTimeout(scanTimer);scanBusy=false;camTrack=null;pinch=null;digZ=1;zoomZ=1;$("scanVideo").style.transform="";
+function closeScanner(){scanning=false;clearTimeout(scanTimer);scanBusy=false;camTrack=null;pinch=null;
   if(stream){stream.getTracks().forEach(t=>t.stop());stream=null;}
   const v=$("scanVideo");try{v.pause();}catch(_){}v.srcObject=null;$("scanner").hidden=true;}
 document.addEventListener("visibilitychange",()=>{if(document.hidden&&!$("scanner").hidden)closeScanner();});

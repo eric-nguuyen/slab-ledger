@@ -272,7 +272,7 @@ input.in{width:100%;font:inherit;font-size:17px;padding:11px 12px;border:1px sol
       <button class="btn" id="importBtn" type="button">Import CSV</button>
       <input type="file" id="importFile" accept=".csv,text/csv" hidden>
       <span class="who" id="who"></span>
-      <span class="who">App version 1.5</span>
+      <span class="who" id="verLabel"></span>
       <button class="btn link" id="signOut" type="button">Sign out</button>
     </div>
   </section>
@@ -311,6 +311,21 @@ input.in{width:100%;font:inherit;font-size:17px;padding:11px 12px;border:1px sol
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://unpkg.com/@zxing/library@0.21.3/umd/index.min.js"></script>
 <script>
+/* ---------- updates: GitHub Pages lets phones reuse a saved copy for ~10 minutes, so check for a newer version on open ---------- */
+const APP_VERSION="1.6";
+document.getElementById("verLabel").textContent="App version "+APP_VERSION;
+function busy(){return !document.getElementById("scanner").hidden||!document.getElementById("scrim").hidden||
+  ["cert","name","price"].some(id=>document.getElementById(id).value.trim()!=="");}
+async function checkForUpdate(){
+  try{const r=await fetch(location.pathname+"?check="+Date.now(),{cache:"no-store"});if(!r.ok)return;
+    const m=(await r.text()).match(/const APP_VERSION="([^"]+)"/);if(!m||m[1]===APP_VERSION)return;
+    if(busy())return;
+    const key="updTried:"+m[1];try{if(sessionStorage.getItem(key))return;sessionStorage.setItem(key,"1");}catch(_){}
+    location.replace(location.pathname+"?v="+encodeURIComponent(m[1]));
+  }catch(_){}}
+checkForUpdate();
+document.addEventListener("visibilitychange",()=>{if(!document.hidden)checkForUpdate();});
+
 /* ---------- Firebase ---------- */
 const firebaseConfig={
   apiKey:"AIzaSyAuhyPFkMKbHNlgPYI1NWJk-EeGBeQTuRM",

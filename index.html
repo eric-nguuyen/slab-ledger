@@ -50,6 +50,11 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 .minis{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:8px}
 .mini{font-size:11px;letter-spacing:.06em;text-transform:uppercase;opacity:.85}
 .mini b{display:block;font-size:16px;letter-spacing:0;text-transform:none;opacity:1;font-weight:700}
+.cash-row{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:12px;padding:10px 12px;border-radius:10px;background:rgba(255,255,255,.14)}
+.cash-row .lbl2{font-size:11px;letter-spacing:.08em;text-transform:uppercase;opacity:.85}
+.cash-row b{display:block;font-size:22px;font-weight:800;letter-spacing:-.01em}
+.cash-row b.neg{text-decoration:underline;text-decoration-thickness:2px;text-underline-offset:3px}
+.cash-btn{font:inherit;font-weight:800;font-size:14px;padding:8px 14px;border-radius:999px;border:0;background:var(--accent-ink);color:var(--accent);cursor:pointer;white-space:nowrap}
 .band-foot{display:flex;justify-content:space-between;gap:12px;margin-top:10px;font-size:11px;opacity:.8}
 .brand{font-weight:800;letter-spacing:.14em;text-transform:uppercase}
 
@@ -127,6 +132,16 @@ input.in{width:100%;font:inherit;font-size:17px;padding:11px 12px;border:1px sol
 .sheet{background:var(--surface);color:var(--fg);width:100%;max-width:560px;border-radius:14px 14px 0 0;padding:16px max(16px,env(safe-area-inset-right,0px)) calc(16px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));display:grid;gap:12px;max-height:92%;overflow:auto}
 .sheet h3{margin:0;font-size:18px}
 .row2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.pq{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:end}
+.qty{display:flex;align-items:stretch;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--bg)}
+.qty button{font:inherit;font-weight:800;font-size:20px;width:44px;border:0;background:var(--surface);color:var(--fg);cursor:pointer}
+.qty button:disabled{opacity:.35;cursor:default}
+.qty input{width:48px;border:0;border-left:1px solid var(--line);border-right:1px solid var(--line);text-align:center;font:inherit;font-size:17px;font-weight:700;background:var(--bg);color:var(--fg);padding:11px 0;font-variant-numeric:tabular-nums;border-radius:0}
+.slab-qty{font-size:12px;font-weight:700;color:var(--muted);text-align:right;margin-top:1px}
+.cash-now{font-size:30px;font-weight:800;letter-spacing:-.01em}
+.seg{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.seg button{font:inherit;font-weight:700;padding:9px;border-radius:999px;border:1px solid var(--line);background:var(--surface);color:var(--fg);cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--fg);color:var(--bg);border-color:var(--fg)}
 .scanner{position:fixed;inset:0;z-index:25;background:#000;color:#fff;display:flex;flex-direction:column}
 .scanner-head{padding:calc(14px + env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) 12px max(16px,env(safe-area-inset-left,0px));display:flex;justify-content:space-between;align-items:center;gap:12px}
 .scanner-head b{font-size:16px}
@@ -197,6 +212,7 @@ input.in{width:100%;font:inherit;font-size:17px;padding:11px 12px;border:1px sol
         <div class="mini">This month<b id="monthTotal">$0.00</b></div>
         <div class="mini">All time<b id="allTotal">$0.00</b></div>
       </div>
+      <div class="cash-row"><div><span class="lbl2">Cash on hand</span><b class="num" id="cashTotal">—</b></div><button type="button" class="cash-btn" id="cashBtn">Update</button></div>
       <div class="band-foot"><span class="brand">Slab Ledger</span><span id="sync">Connecting…</span></div>
     </div>
   </header>
@@ -226,8 +242,10 @@ input.in{width:100%;font:inherit;font-size:17px;padding:11px 12px;border:1px sol
         <div class="cats" id="cats"></div>
       </div>
       <div>
-        <label class="lbl" for="price">Price paid</label>
-        <div class="price-wrap"><span>$</span><input class="in" id="price" inputmode="decimal" placeholder="0.00"></div>
+        <div class="pq">
+          <div><label class="lbl" for="price">Total price paid</label><div class="price-wrap"><span>$</span><input class="in" id="price" inputmode="decimal" placeholder="0.00"></div></div>
+          <div><label class="lbl" for="qty">Cards</label><div class="qty" data-for="qty"><button type="button" data-d="-1" aria-label="One fewer card">−</button><input id="qty" inputmode="numeric" value="1" aria-label="Number of cards"><button type="button" data-d="1" aria-label="One more card">+</button></div></div>
+        </div>
       </div>
       <button class="btn primary" type="submit" id="addBtn">Add purchase</button>
       <div class="note warn" id="formErr" hidden></div>
@@ -279,10 +297,26 @@ input.in{width:100%;font:inherit;font-size:17px;padding:11px 12px;border:1px sol
     <div><label class="lbl" for="eCert">PSA cert number</label><input class="in mono" id="eCert" inputmode="numeric"></div>
     <div><label class="lbl" for="eName">Card</label><input class="in" id="eName"></div>
     <div><span class="lbl">Category</span><div class="cats" id="eCats"></div></div>
-    <div><label class="lbl" for="ePrice">Price paid</label><div class="price-wrap"><span>$</span><input class="in" id="ePrice" inputmode="decimal"></div></div>
+    <div class="pq">
+      <div><label class="lbl" for="ePrice">Total price paid</label><div class="price-wrap"><span>$</span><input class="in" id="ePrice" inputmode="decimal"></div></div>
+      <div><label class="lbl" for="eQty">Cards</label><div class="qty" data-for="eQty"><button type="button" data-d="-1" aria-label="One fewer card">−</button><input id="eQty" inputmode="numeric" value="1" aria-label="Number of cards"><button type="button" data-d="1" aria-label="One more card">+</button></div></div>
+    </div>
     <div class="row2"><button class="btn" type="button" id="eCancel">Cancel</button><button class="btn primary" type="submit">Save</button></div>
     <button class="btn danger" type="button" id="eDelete">Delete purchase</button>
     <div class="row2" id="eConfirm" hidden><button class="btn" type="button" id="eKeep">Keep it</button><button class="btn danger" type="button" id="eDeleteYes">Yes, delete</button></div>
+  </form>
+</div>
+
+<!-- cash on hand sheet -->
+<div class="scrim" id="cashScrim" hidden>
+  <form class="sheet" id="cashForm" autocomplete="off">
+    <h3>Cash on hand</h3>
+    <div><span class="lbl">Right now</span><div class="cash-now num" id="cashNow">—</div><div class="hint" id="cashSince"></div></div>
+    <div class="seg"><button type="button" id="modeAdd" aria-pressed="true">Add cash</button><button type="button" id="modeSet" aria-pressed="false">Set exact amount</button></div>
+    <div><label class="lbl" for="cashAmt" id="cashAmtLbl">Amount to add</label><div class="price-wrap"><span>$</span><input class="in" id="cashAmt" inputmode="decimal" placeholder="0.00"></div></div>
+    <div class="hint" id="cashHelp">Adds to your cash on hand. Every purchase you log is taken out automatically.</div>
+    <div class="row2"><button class="btn" type="button" id="cashCancel">Cancel</button><button class="btn primary" type="submit" id="cashSave">Add</button></div>
+    <div class="note warn" id="cashErr" hidden></div>
   </form>
 </div>
 
@@ -305,9 +339,9 @@ input.in{width:100%;font:inherit;font-size:17px;padding:11px 12px;border:1px sol
 <script src="https://unpkg.com/@zxing/library@0.21.3/umd/index.min.js"></script>
 <script>
 /* ---------- updates: GitHub Pages lets phones reuse a saved copy for ~10 minutes, so check for a newer version on open ---------- */
-const APP_VERSION="1.7";
+const APP_VERSION="1.8";
 document.getElementById("verLabel").textContent="App version "+APP_VERSION;
-function busy(){return !document.getElementById("scanner").hidden||!document.getElementById("scrim").hidden||
+function busy(){return !document.getElementById("scanner").hidden||!document.getElementById("scrim").hidden||!document.getElementById("cashScrim").hidden||
   ["cert","name","price"].some(id=>document.getElementById(id).value.trim()!=="");}
 async function checkForUpdate(){
   try{const r=await fetch(location.pathname+"?check="+Date.now(),{cache:"no-store"});if(!r.ok)return;
@@ -336,7 +370,7 @@ fs.enablePersistence({synchronizeTabs:true}).catch(()=>{});
 const CATS=[{k:"pokemon",n:"Pokémon"},{k:"basketball",n:"Basketball"},{k:"baseball",n:"Baseball"},{k:"football",n:"Football"}];
 const catName=k=>(CATS.find(c=>c.k===k)||{n:"Other"}).n;
 const $=id=>document.getElementById(id);
-let coll=null,unsub=null,entries=[],ready=false,selCat="pokemon",editCat="pokemon",editing=null,histDay=null,lastAddedId=null;
+let cashRef=null,cashUnsub=null,cash=null,coll=null,unsub=null,entries=[],ready=false,selCat="pokemon",editCat="pokemon",editing=null,histDay=null,lastAddedId=null;
 
 /* ---------- helpers ---------- */
 const pad=n=>String(n).padStart(2,"0");
@@ -348,6 +382,13 @@ function fmtDay(k,long){const[y,m,d]=k.split("-").map(Number);return new Date(y,
 const cleanCert=s=>String(s||"").trim().replace(/\s+/g,"");
 const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const sum=a=>a.reduce((t,e)=>t+(e.cents||0),0);
+const qtyOf=e=>Math.max(1,Math.round(+e.qty||1));
+const cards=a=>a.reduce((t,e)=>t+qtyOf(e),0);
+const plural=(n,w)=>n+" "+w+(n===1?"":"s");
+/* cash on hand = the amount you set, plus cash added since, minus purchases logged after you set it.
+   Editing or deleting one of those purchases puts the money back automatically. */
+function cashOnHand(){if(!cash||typeof cash.cents!=="number")return null;const since=cash.since||0;
+  return cash.cents-sum(entries.filter(e=>e.ts>=since));}
 function toast(msg,actLabel,act){const t=$("toast");t.innerHTML="";const s=document.createElement("span");s.textContent=msg;t.appendChild(s);
   if(actLabel){const b=document.createElement("button");b.type="button";b.textContent=actLabel;b.onclick=()=>{t.hidden=true;act();};t.appendChild(b);}
   t.hidden=false;clearTimeout(toast.h);toast.h=setTimeout(()=>t.hidden=true,actLabel?5000:2200);}
@@ -379,9 +420,13 @@ $("signOut").onclick=()=>auth.signOut();
 auth.onAuthStateChanged(u=>{
   $("boot").hidden=true;
   if(unsub){unsub();unsub=null;}
-  if(!u){entries=[];coll=null;ready=false;$("appView").hidden=true;$("authView").hidden=false;setMode(false);return;}
+  if(cashUnsub){cashUnsub();cashUnsub=null;}
+  if(!u){entries=[];coll=null;cashRef=null;cash=null;ready=false;$("appView").hidden=true;$("authView").hidden=false;setMode(false);return;}
   $("authView").hidden=true;$("appView").hidden=false;$("who").textContent="Signed in as "+(u.email||"you");
-  coll=fs.collection("users").doc(u.uid).collection("purchases");ready=false;render();
+  coll=fs.collection("users").doc(u.uid).collection("purchases");ready=false;cash=null;
+  cashRef=fs.collection("users").doc(u.uid).collection("meta").doc("cash");
+  cashUnsub=cashRef.onSnapshot(d=>{cash=d.exists?d.data():null;render();},()=>{});
+  render();
   unsub=coll.orderBy("ts","desc").onSnapshot({includeMetadataChanges:true},snap=>{
     entries=snap.docs.map(d=>Object.assign({id:d.id},d.data()));ready=true;
     $("sync").textContent=snap.metadata.hasPendingWrites?"Saving…":snap.metadata.fromCache?"Offline · saved on phone":"Synced";
@@ -397,7 +442,7 @@ drawCats($("cats"),selCat,k=>selCat=k);
 /* ---------- rendering ---------- */
 function slabHTML(e,showDate){return `<div class="swipe" data-id="${esc(e.id)}"><button type="button" class="swipe-del" tabindex="-1">Delete</button><button type="button" class="slab${e.id===lastAddedId?" new":""}" data-id="${esc(e.id)}">
   <div class="slab-top"><span class="cat-tag"><i style="background:var(--c-${esc(e.cat)})"></i>${esc(catName(e.cat))}</span><span class="time">${showDate?esc(fmtDay(e.day))+" · ":""}${esc(fmtTime(e.ts))}</span></div>
-  <div class="slab-body"><div class="left"><div class="slab-name">${esc(e.name||"Untitled slab")}</div>${e.cert?`<div class="slab-cert">CERT #${esc(e.cert)}</div>`:""}</div><div class="slab-price num">${money(e.cents)}</div></div></button></div>`;}
+  <div class="slab-body"><div class="left"><div class="slab-name">${esc(e.name||"Untitled slab")}</div>${e.cert?`<div class="slab-cert">CERT #${esc(e.cert)}</div>`:""}</div><div><div class="slab-price num">${money(e.cents)}</div>${qtyOf(e)>1?`<div class="slab-qty num">${qtyOf(e)} cards</div>`:""}</div></div></button></div>`;}
 
 function render(){
   const now=new Date(),tk=dayKey(now);
@@ -409,7 +454,10 @@ function render(){
   $("monthTotal").textContent=money(sum(entries.filter(e=>e.ts>=monthStart)));
   $("allTotal").textContent=money(sum(entries));
   $("todayDate").textContent=now.toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"});
-  $("todaySum").textContent=today.length?today.length+(today.length===1?" buy · ":" buys · ")+money(sum(today)):"";
+  $("todaySum").textContent=today.length?plural(today.length,"buy")+" · "+plural(cards(today),"card")+" · "+money(sum(today)):"";
+  const coh=cashOnHand(),ct=$("cashTotal");ct.textContent=coh===null?"Not set":money(coh);ct.classList.toggle("neg",coh!==null&&coh<0);
+  $("cashBtn").textContent=coh===null?"Set up":"Update";
+  if(!$("cashScrim").hidden)drawCashSheet();
   $("todayList").innerHTML=today.length?today.map(e=>slabHTML(e)).join(""):`<div class="empty">${ready?"No buys logged today. Tap Scan or type a cert number above, add the price, and tap Add purchase.":"Loading your purchases…"}</div>`;
   renderHist();
 }
@@ -424,7 +472,7 @@ function renderHist(){
   $("dayCats").innerHTML=list.length?CATS.map(c=>{const s=sum(list.filter(e=>e.cat===c.k));return s?`<div class="catbar"><span>${c.n}</span><span class="track"><span class="fill" style="width:${(s/tot*100).toFixed(1)}%;background:var(--c-${c.k})"></span></span><b class="num">${money(s)}</b></div>`:"";}).join(""):"";
   const days={};entries.forEach(e=>{(days[e.day]=days[e.day]||[]).push(e);});
   const keys=Object.keys(days).sort().reverse();
-  $("dayIndex").innerHTML=keys.length?keys.map(k=>`<button type="button" class="day-row" data-day="${k}" aria-current="${k===histDay}"><span><span class="d">${esc(fmtDay(k))}</span><br><span class="c">${days[k].length} ${days[k].length===1?"buy":"buys"}</span></span><b class="num">${money(sum(days[k]))}</b></button>`).join(""):`<div class="empty">${ready?"Your days will show up here once you log a buy.":"Loading…"}</div>`;
+  $("dayIndex").innerHTML=keys.length?keys.map(k=>`<button type="button" class="day-row" data-day="${k}" aria-current="${k===histDay}"><span><span class="d">${esc(fmtDay(k))}</span><br><span class="c">${plural(days[k].length,"buy")} · ${plural(cards(days[k]),"card")}</span></span><b class="num">${money(sum(days[k]))}</b></button>`).join(""):`<div class="empty">${ready?"Your days will show up here once you log a buy.":"Loading…"}</div>`;
   const q=cleanCert($("search").value);
   if(q){const m=entries.filter(e=>(e.cert||"").includes(q));$("searchResults").hidden=false;$("dayDetail").hidden=true;
     $("searchSum").textContent=m.length?money(sum(m)):"";
@@ -478,27 +526,61 @@ function checkDup(){const c=cleanCert($("cert").value);const n=$("dupNote");cons
   if(hit){n.textContent=`You already logged cert #${c} on ${fmtDay(hit.day)} for ${money(hit.cents)}.`;n.hidden=false;}else n.hidden=true;}
 $("cert").oninput=checkDup;
 
+/* ---------- card count steppers ---------- */
+function getQty(id){const n=parseInt($(id).value,10);return n>0?Math.min(n,999):1;}
+function setQty(id,n){n=Math.max(1,Math.min(999,n|0||1));$(id).value=n;const box=document.querySelector(`.qty[data-for="${id}"]`);box.querySelector('[data-d="-1"]').disabled=n<=1;}
+document.querySelectorAll(".qty").forEach(box=>{const id=box.dataset.for;
+  box.addEventListener("click",e=>{const b=e.target.closest("button");if(b)setQty(id,getQty(id)+(+b.dataset.d));});
+  $(id).addEventListener("focus",()=>$(id).select());
+  $(id).addEventListener("blur",()=>setQty(id,getQty(id)));});
+setQty("qty",1);
+
 /* ---------- add ---------- */
 $("addForm").onsubmit=ev=>{ev.preventDefault();const err=$("formErr");err.hidden=true;
   const cents=parseCents($("price").value);
   if(cents===null||cents<=0){err.textContent="Enter the price you paid, like 45 or 45.99.";err.hidden=false;$("price").focus();return;}
   if(!coll)return;
-  const now=new Date();const rec={cert:cleanCert($("cert").value),name:$("name").value.trim(),cat:selCat,cents,ts:now.getTime(),day:dayKey(now)};
+  const now=new Date();const qty=getQty("qty");const rec={cert:cleanCert($("cert").value),name:$("name").value.trim(),cat:selCat,cents,qty,ts:now.getTime(),day:dayKey(now)};
   const ref=coll.doc();lastAddedId=ref.id;
   ref.set(rec).catch(()=>toast("Couldn't save that purchase. Try adding it again."));
-  $("cert").value="";$("name").value="";$("price").value="";$("dupNote").hidden=true;$("scanHint").hidden=true;
-  $("price").blur();toast("Added "+money(cents)+" at "+fmtTime(rec.ts));};
+  $("cert").value="";$("name").value="";$("price").value="";setQty("qty",1);$("dupNote").hidden=true;$("scanHint").hidden=true;
+  $("price").blur();toast("Added "+money(cents)+(qty>1?" for "+qty+" cards":"")+" at "+fmtTime(rec.ts));};
+
+/* ---------- cash on hand ---------- */
+let cashMode="add";
+function setCashMode(m){cashMode=m;$("modeAdd").setAttribute("aria-pressed",m==="add");$("modeSet").setAttribute("aria-pressed",m==="set");
+  $("cashAmtLbl").textContent=m==="add"?"Amount to add":"Cash you have right now";
+  $("cashSave").textContent=m==="add"?"Add":"Save";
+  $("cashHelp").textContent=m==="add"?"Adds to your cash on hand. Every purchase you log is taken out automatically.":"Count your cash and enter the total. Purchases you log from now on are taken out automatically.";
+  $("cashErr").hidden=true;}
+function drawCashSheet(){const coh=cashOnHand();$("cashNow").textContent=coh===null?"Not set yet":money(coh);
+  const since=cash&&cash.since?cash.since:0;const n=since?entries.filter(e=>e.ts>=since).length:0;
+  $("cashSince").textContent=coh===null?"":n?`${plural(n,"purchase")} (${money(sum(entries.filter(e=>e.ts>=since)))}) taken out since you last set it.`:"No purchases taken out since you last set it.";}
+function openCash(){drawCashSheet();setCashMode(cashOnHand()===null?"set":"add");$("cashAmt").value="";$("cashScrim").hidden=false;}
+const closeCash=()=>{$("cashScrim").hidden=true;};
+$("cashBtn").addEventListener("click",e=>{e.stopPropagation();openCash();});
+$("cashBtn").addEventListener("keydown",e=>e.stopPropagation());
+$("modeAdd").onclick=()=>setCashMode("add");$("modeSet").onclick=()=>setCashMode("set");
+$("cashCancel").onclick=closeCash;$("cashScrim").onclick=e=>{if(e.target.id==="cashScrim")closeCash();};
+$("cashForm").onsubmit=ev=>{ev.preventDefault();if(!cashRef)return;const err=$("cashErr");err.hidden=true;
+  const amt=parseCents($("cashAmt").value);
+  if(amt===null||(cashMode==="add"&&amt<=0)){err.textContent=cashMode==="add"?"Enter how much cash to add, like 200.":"Enter the cash you have, like 450 or 0.";err.hidden=false;return;}
+  const adding=cashMode==="add"&&cashOnHand()!==null;
+  const doc=adding?{cents:cash.cents+amt,since:cash.since||Date.now()}:{cents:amt,since:Date.now()};
+  const msg=adding?"Added "+money(amt)+" · cash on hand "+money(cashOnHand()+amt):"Cash on hand set to "+money(amt);
+  cashRef.set(doc).catch(()=>toast("Couldn't save cash on hand. Try again."));
+  closeCash();toast(msg);};
 
 /* ---------- edit / delete ---------- */
 function openEdit(id){const e=entries.find(x=>x.id===id);if(!e)return;editing=e;editCat=e.cat;
-  $("eCert").value=e.cert||"";$("eName").value=e.name||"";$("ePrice").value=(e.cents/100).toFixed(2);
+  $("eCert").value=e.cert||"";$("eName").value=e.name||"";$("ePrice").value=(e.cents/100).toFixed(2);setQty("eQty",qtyOf(e));
   $("editWhen").textContent="Logged "+fmtDay(e.day,true)+" at "+fmtTime(e.ts);
   drawCats($("eCats"),editCat,k=>editCat=k);$("eConfirm").hidden=true;$("eDelete").hidden=false;$("scrim").hidden=false;}
 const closeEdit=()=>{$("scrim").hidden=true;editing=null;};
 $("eCancel").onclick=closeEdit;$("scrim").onclick=e=>{if(e.target.id==="scrim")closeEdit();};
 $("editForm").onsubmit=ev=>{ev.preventDefault();if(!editing||!coll)return;
   const cents=parseCents($("ePrice").value);if(cents===null||cents<=0){toast("Enter a valid price");return;}
-  const rec={cert:cleanCert($("eCert").value),name:$("eName").value.trim(),cat:editCat,cents,ts:editing.ts,day:editing.day};
+  const rec={cert:cleanCert($("eCert").value),name:$("eName").value.trim(),cat:editCat,cents,qty:getQty("eQty"),ts:editing.ts,day:editing.day};
   coll.doc(editing.id).set(rec).catch(()=>toast("Couldn't save. Try again."));toast("Saved");closeEdit();};
 $("eDelete").onclick=()=>{$("eDelete").hidden=true;$("eConfirm").hidden=false;};
 $("eKeep").onclick=()=>{$("eConfirm").hidden=true;$("eDelete").hidden=false;};
@@ -634,7 +716,7 @@ $("scanFile").onchange=async e=>{const f=e.target.files&&e.target.files[0];e.tar
 /* ---------- export / import ---------- */
 function csvOf(rows){return rows.map(r=>r.map(v=>{v=String(v??"");return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;}).join(",")).join("\n");}
 $("exportBtn").onclick=async()=>{if(!entries.length){toast("Nothing to export yet");return;}
-  const rows=[["Date","Time","Category","Card","PSA cert","Price"]].concat([...entries].sort((a,b)=>a.ts-b.ts).map(e=>[e.day,fmtTime(e.ts),catName(e.cat),e.name||"",e.cert||"",(e.cents/100).toFixed(2)]));
+  const rows=[["Date","Time","Category","Card","PSA cert","Qty","Price"]].concat([...entries].sort((a,b)=>a.ts-b.ts).map(e=>[e.day,fmtTime(e.ts),catName(e.cat),e.name||"",e.cert||"",qtyOf(e),(e.cents/100).toFixed(2)]));
   const name="slab-ledger-"+dayKey(new Date())+".csv";const blob=new Blob([csvOf(rows)],{type:"text/csv"});
   try{const file=new File([blob],name,{type:"text/csv"});if(navigator.canShare&&navigator.canShare({files:[file]})){await navigator.share({files:[file],title:name});return;}}catch(e){if(e&&e.name==="AbortError")return;}
   const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),4000);};
@@ -647,7 +729,7 @@ function parseTime(s){const m=String(s||"").trim().match(/^(\d{1,2}):(\d{2})\s*(
 $("importBtn").onclick=()=>$("importFile").click();
 $("importFile").onchange=async e=>{const f=e.target.files&&e.target.files[0];e.target.value="";if(!f||!coll)return;
   try{const rows=parseCSV(await f.text());const head=rows.shift().map(h=>h.trim().toLowerCase());
-    const col=n=>head.indexOf(n);const iD=col("date"),iT=col("time"),iC=col("category"),iN=col("card"),iX=col("psa cert"),iP=col("price");
+    const col=n=>head.indexOf(n);const iD=col("date"),iT=col("time"),iC=col("category"),iN=col("card"),iX=col("psa cert"),iP=col("price"),iQ=col("qty");
     if(iD<0||iP<0){toast("That file isn't a Slab Ledger export.");return;}
     const have=new Set(entries.map(x=>x.day+"|"+fmtTime(x.ts)+"|"+x.cents+"|"+(x.cert||"")));
     const recs=[];
@@ -655,7 +737,8 @@ $("importFile").onchange=async e=>{const f=e.target.files&&e.target.files[0];e.t
       const[y,mo,d]=day.split("-").map(Number);const[h,mi]=parseTime(iT>=0?r[iT]:"");const ts=new Date(y,mo-1,d,h,mi).getTime();
       const cert=iX>=0?cleanCert(r[iX]):"";const key=day+"|"+fmtTime(ts)+"|"+cents+"|"+cert;if(have.has(key))return;have.add(key);
       const cn=(iC>=0?r[iC]:"").trim().toLowerCase();const cat=(CATS.find(c=>c.n.toLowerCase()===cn||c.k===cn)||CATS[0]).k;
-      recs.push({cert,name:iN>=0?(r[iN]||"").trim():"",cat,cents,ts,day});});
+      const qty=iQ>=0?Math.max(1,parseInt(r[iQ],10)||1):1;
+      recs.push({cert,name:iN>=0?(r[iN]||"").trim():"",cat,cents,qty,ts,day});});
     if(!recs.length){toast("Nothing new to import.");return;}
     for(let i=0;i<recs.length;i+=400){const b=fs.batch();recs.slice(i,i+400).forEach(rec=>b.set(coll.doc(),rec));b.commit().catch(()=>toast("Some rows didn't save. Try importing again."));}
     toast("Imported "+recs.length+(recs.length===1?" purchase":" purchases"));

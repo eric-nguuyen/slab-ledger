@@ -124,6 +124,21 @@ input.in{width:100%;font:inherit;font-size:17px;padding:11px 12px;border:1px sol
 .catbar{display:grid;grid-template-columns:96px 1fr auto;gap:8px;align-items:center;font-size:13px}
 .catbar .track{height:8px;background:var(--bg);border:1px solid var(--line);border-radius:4px;overflow:hidden}
 .catbar .fill{display:block;height:100%}
+/* photo field */
+.photo-field{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.photo-btn{display:inline-flex;align-items:center;gap:8px}
+.photo-btn svg,.ph-ico svg{width:18px;height:18px}
+.thumb{position:relative;width:72px;height:72px;border-radius:8px;overflow:hidden;border:1px solid var(--line);background:var(--bg);flex:none;padding:0;cursor:pointer}
+.thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.thumb-x{position:absolute;top:3px;right:3px;width:24px;height:24px;border-radius:50%;border:0;background:rgba(0,0,0,.65);color:#fff;font:inherit;font-weight:800;font-size:14px;line-height:24px;padding:0;cursor:pointer}
+.photo-meta{font-size:13px;color:var(--muted)}
+.ph-ico{display:inline-flex;vertical-align:-3px;margin-right:4px;color:var(--muted)}
+.ph-ico svg{width:14px;height:14px}
+.viewer{position:fixed;inset:0;z-index:40;background:#000;display:flex;align-items:center;justify-content:center;padding:calc(56px + env(safe-area-inset-top,0px)) 0 calc(24px + env(safe-area-inset-bottom,0px))}
+.viewer img{max-width:100%;max-height:100%;object-fit:contain}
+.viewer-close{position:absolute;top:calc(12px + env(safe-area-inset-top,0px));right:max(16px,env(safe-area-inset-right,0px));font:inherit;font-weight:700;padding:9px 14px;border-radius:999px;border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.12);color:#fff;cursor:pointer}
+.photos-card{display:grid;gap:10px}
+.photos-card select{font:inherit;font-size:16px;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--fg);width:100%}
 .foot{display:flex;gap:8px;flex-wrap:wrap;margin-top:22px;align-items:center}
 .foot .who{flex-basis:100%;font-size:13px;color:var(--muted)}
 
@@ -247,6 +262,13 @@ input.in{width:100%;font:inherit;font-size:17px;padding:11px 12px;border:1px sol
           <div><label class="lbl" for="qty">Cards</label><div class="qty" data-for="qty"><button type="button" data-d="-1" aria-label="One fewer card">−</button><input id="qty" inputmode="numeric" value="1" aria-label="Number of cards"><button type="button" data-d="1" aria-label="One more card">+</button></div></div>
         </div>
       </div>
+      <div>
+        <span class="lbl">Photo (optional)</span>
+        <div class="photo-field" id="addPhotoField">
+          <button type="button" class="btn photo-btn" id="addPhotoBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg><span>Take photo</span></button>
+        </div>
+        <input type="file" id="addPhotoFile" accept="image/*" capture="environment" hidden>
+      </div>
       <button class="btn primary" type="submit" id="addBtn">Add purchase</button>
       <div class="note warn" id="formErr" hidden></div>
     </form>
@@ -278,6 +300,16 @@ input.in{width:100%;font:inherit;font-size:17px;padding:11px 12px;border:1px sol
     <div class="sec"><h2>Days with buys</h2></div>
     <div class="list" id="dayIndex"></div>
 
+    <div class="sec"><h2>Photos</h2><span class="sum num" id="photoSum"></span></div>
+    <div class="card photos-card">
+      <div class="photo-meta" id="photoUsage">No photos saved.</div>
+      <div><label class="lbl" for="autoClear">Auto-clear photos</label>
+        <select id="autoClear"><option value="0">Off</option><option value="7">After 7 days</option><option value="14">After 14 days</option><option value="30">After 30 days</option></select></div>
+      <button class="btn danger" type="button" id="clearPhotos">Clear all photos</button>
+      <div class="row2" id="clearConfirm" hidden><button class="btn" type="button" id="clearKeep">Keep them</button><button class="btn danger" type="button" id="clearYes">Yes, delete all</button></div>
+      <div class="hint">Clearing removes photos only. Your purchases, prices and cert numbers stay.</div>
+    </div>
+
     <div class="foot">
       <button class="btn" id="exportBtn" type="button">Export CSV</button>
       <button class="btn" id="importBtn" type="button">Import CSV</button>
@@ -301,11 +333,19 @@ input.in{width:100%;font:inherit;font-size:17px;padding:11px 12px;border:1px sol
       <div><label class="lbl" for="ePrice">Total price paid</label><div class="price-wrap"><span>$</span><input class="in" id="ePrice" inputmode="decimal"></div></div>
       <div><label class="lbl" for="eQty">Cards</label><div class="qty" data-for="eQty"><button type="button" data-d="-1" aria-label="One fewer card">−</button><input id="eQty" inputmode="numeric" value="1" aria-label="Number of cards"><button type="button" data-d="1" aria-label="One more card">+</button></div></div>
     </div>
+    <div>
+      <span class="lbl">Photo</span>
+      <div class="photo-field" id="editPhotoField"></div>
+      <input type="file" id="editPhotoFile" accept="image/*" capture="environment" hidden>
+    </div>
     <div class="row2"><button class="btn" type="button" id="eCancel">Cancel</button><button class="btn primary" type="submit">Save</button></div>
     <button class="btn danger" type="button" id="eDelete">Delete purchase</button>
     <div class="row2" id="eConfirm" hidden><button class="btn" type="button" id="eKeep">Keep it</button><button class="btn danger" type="button" id="eDeleteYes">Yes, delete</button></div>
   </form>
 </div>
+
+<!-- photo viewer -->
+<div class="viewer" id="viewer" hidden><img id="viewerImg" alt="Purchase photo"><button type="button" class="viewer-close" id="viewerClose">Close</button></div>
 
 <!-- cash on hand sheet -->
 <div class="scrim" id="cashScrim" hidden>
@@ -339,9 +379,10 @@ input.in{width:100%;font:inherit;font-size:17px;padding:11px 12px;border:1px sol
 <script src="https://unpkg.com/@zxing/library@0.21.3/umd/index.min.js"></script>
 <script>
 /* ---------- updates: GitHub Pages lets phones reuse a saved copy for ~10 minutes, so check for a newer version on open ---------- */
-const APP_VERSION="1.8";
+const APP_VERSION="1.9";
 document.getElementById("verLabel").textContent="App version "+APP_VERSION;
 function busy(){return !document.getElementById("scanner").hidden||!document.getElementById("scrim").hidden||!document.getElementById("cashScrim").hidden||
+  !document.getElementById("viewer").hidden||!!window.addPhoto||
   ["cert","name","price"].some(id=>document.getElementById(id).value.trim()!=="");}
 async function checkForUpdate(){
   try{const r=await fetch(location.pathname+"?check="+Date.now(),{cache:"no-store"});if(!r.ok)return;
@@ -370,7 +411,7 @@ fs.enablePersistence({synchronizeTabs:true}).catch(()=>{});
 const CATS=[{k:"pokemon",n:"Pokémon"},{k:"basketball",n:"Basketball"},{k:"baseball",n:"Baseball"},{k:"football",n:"Football"}];
 const catName=k=>(CATS.find(c=>c.k===k)||{n:"Other"}).n;
 const $=id=>document.getElementById(id);
-let cashRef=null,cashUnsub=null,cash=null,coll=null,unsub=null,entries=[],ready=false,selCat="pokemon",editCat="pokemon",editing=null,histDay=null,lastAddedId=null;
+let photosColl=null,settingsRef=null,settingsUnsub=null,settings={},autoClearRan=false,cashRef=null,cashUnsub=null,cash=null,coll=null,unsub=null,entries=[],ready=false,selCat="pokemon",editCat="pokemon",editing=null,histDay=null,lastAddedId=null;
 
 /* ---------- helpers ---------- */
 const pad=n=>String(n).padStart(2,"0");
@@ -421,14 +462,19 @@ auth.onAuthStateChanged(u=>{
   $("boot").hidden=true;
   if(unsub){unsub();unsub=null;}
   if(cashUnsub){cashUnsub();cashUnsub=null;}
-  if(!u){entries=[];coll=null;cashRef=null;cash=null;ready=false;$("appView").hidden=true;$("authView").hidden=false;setMode(false);return;}
+  if(settingsUnsub){settingsUnsub();settingsUnsub=null;}
+  if(!u){entries=[];coll=null;cashRef=null;cash=null;photosColl=null;settingsRef=null;settings={};ready=false;$("appView").hidden=true;$("authView").hidden=false;setMode(false);return;}
   $("authView").hidden=true;$("appView").hidden=false;$("who").textContent="Signed in as "+(u.email||"you");
   coll=fs.collection("users").doc(u.uid).collection("purchases");ready=false;cash=null;
   cashRef=fs.collection("users").doc(u.uid).collection("meta").doc("cash");
   cashUnsub=cashRef.onSnapshot(d=>{cash=d.exists?d.data():null;render();},()=>{});
+  photosColl=fs.collection("users").doc(u.uid).collection("photos");autoClearRan=false;
+  settingsRef=fs.collection("users").doc(u.uid).collection("meta").doc("settings");
+  settingsUnsub=settingsRef.onSnapshot(d=>{settings=d.exists?d.data():{};$("autoClear").value=String(settings.autoClearDays||0);maybeAutoClear();},()=>{});
   render();
   unsub=coll.orderBy("ts","desc").onSnapshot({includeMetadataChanges:true},snap=>{
     entries=snap.docs.map(d=>Object.assign({id:d.id},d.data()));ready=true;
+    if(!snap.metadata.fromCache)maybeAutoClear();
     $("sync").textContent=snap.metadata.hasPendingWrites?"Saving…":snap.metadata.fromCache?"Offline · saved on phone":"Synced";
     render();
   },err=>{$("sync").textContent="Sync error";toast(err.code==="permission-denied"?"Database rules are blocking access. Check the Firestore rules.":"Couldn't load purchases.");});
@@ -442,7 +488,7 @@ drawCats($("cats"),selCat,k=>selCat=k);
 /* ---------- rendering ---------- */
 function slabHTML(e,showDate){return `<div class="swipe" data-id="${esc(e.id)}"><button type="button" class="swipe-del" tabindex="-1">Delete</button><button type="button" class="slab${e.id===lastAddedId?" new":""}" data-id="${esc(e.id)}">
   <div class="slab-top"><span class="cat-tag"><i style="background:var(--c-${esc(e.cat)})"></i>${esc(catName(e.cat))}</span><span class="time">${showDate?esc(fmtDay(e.day))+" · ":""}${esc(fmtTime(e.ts))}</span></div>
-  <div class="slab-body"><div class="left"><div class="slab-name">${esc(e.name||"Untitled slab")}</div>${e.cert?`<div class="slab-cert">CERT #${esc(e.cert)}</div>`:""}</div><div><div class="slab-price num">${money(e.cents)}</div>${qtyOf(e)>1?`<div class="slab-qty num">${qtyOf(e)} cards</div>`:""}</div></div></button></div>`;}
+  <div class="slab-body"><div class="left"><div class="slab-name">${e.photo?`<span class="ph-ico" title="Has photo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg></span>`:""}${esc(e.name||"Untitled slab")}</div>${e.cert?`<div class="slab-cert">CERT #${esc(e.cert)}</div>`:""}</div><div><div class="slab-price num">${money(e.cents)}</div>${qtyOf(e)>1?`<div class="slab-qty num">${qtyOf(e)} cards</div>`:""}</div></div></button></div>`;}
 
 function render(){
   const now=new Date(),tk=dayKey(now);
@@ -458,6 +504,7 @@ function render(){
   const coh=cashOnHand(),ct=$("cashTotal");ct.textContent=coh===null?"Not set":money(coh);ct.classList.toggle("neg",coh!==null&&coh<0);
   $("cashBtn").textContent=coh===null?"Set up":"Update";
   if(!$("cashScrim").hidden)drawCashSheet();
+  drawPhotoStats();
   $("todayList").innerHTML=today.length?today.map(e=>slabHTML(e)).join(""):`<div class="empty">${ready?"No buys logged today. Tap Scan or type a cert number above, add the price, and tap Add purchase.":"Loading your purchases…"}</div>`;
   renderHist();
 }
@@ -535,14 +582,83 @@ document.querySelectorAll(".qty").forEach(box=>{const id=box.dataset.for;
   $(id).addEventListener("blur",()=>setQty(id,getQty(id)));});
 setQty("qty",1);
 
+/* ---------- photos ----------
+   One photo per purchase, shrunk on the phone and saved in its own database document
+   (users/<you>/photos/<purchase id>), so the purchase list never has to load it. */
+const PHOTO_MAX_SIDE=1000,PHOTO_TARGET=150*1024;
+window.addPhoto=null;let editPhoto={state:"none",data:null,bytes:0,loadedFor:null};
+function loadImage(file){return new Promise((res,rej)=>{const u=URL.createObjectURL(file);const i=new Image();i.onload=()=>{URL.revokeObjectURL(u);res(i);};i.onerror=()=>{URL.revokeObjectURL(u);rej(new Error("decode"));};i.src=u;});}
+async function shrinkPhoto(file){const img=await loadImage(file);let side=PHOTO_MAX_SIDE,q=0.72,data="";
+  for(let tries=0;tries<6;tries++){const k=Math.min(1,side/Math.max(img.naturalWidth,img.naturalHeight));
+    const w=Math.max(1,Math.round(img.naturalWidth*k)),h=Math.max(1,Math.round(img.naturalHeight*k));
+    const c=document.createElement("canvas");c.width=w;c.height=h;c.getContext("2d").drawImage(img,0,0,w,h);
+    data=c.toDataURL("image/jpeg",q);if(data.length*0.75<=PHOTO_TARGET)break;
+    if(q>0.5)q-=0.1;else side=Math.round(side*0.85);}
+  return{data,bytes:Math.round(data.length*0.75)};}
+const kb=n=>n<1024*1024?Math.max(1,Math.round(n/1024))+" KB":(n/1024/1024).toFixed(1)+" MB";
+function openViewer(src){if(!src)return;$("viewerImg").src=src;$("viewer").hidden=false;}
+$("viewerClose").onclick=()=>{$("viewer").hidden=true;$("viewerImg").removeAttribute("src");};
+$("viewer").onclick=e=>{if(e.target.id==="viewer")$("viewerClose").click();};
+function photoFieldHTML(p,busyText){if(busyText)return`<span class="photo-meta">${busyText}</span>`;
+  if(p&&p.data)return`<button type="button" class="thumb" data-act="view"><img src="${p.data}" alt="Photo"><span class="thumb-x" data-act="remove" role="button" aria-label="Remove photo">×</span></button>
+    <div><div class="photo-meta">${kb(p.bytes)}</div><button type="button" class="btn link" data-act="retake">Retake</button></div>`;
+  return`<button type="button" class="btn photo-btn" data-act="take"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg><span>Take photo</span></button>`;}
+/* add form */
+function drawAddPhoto(t){$("addPhotoField").innerHTML=photoFieldHTML(window.addPhoto,t);}
+$("addPhotoField").onclick=e=>{const a=e.target.closest("[data-act]");if(!a)return;const act=a.dataset.act;
+  if(act==="remove"){e.stopPropagation();window.addPhoto=null;drawAddPhoto();return;}
+  if(act==="view"){openViewer(window.addPhoto&&window.addPhoto.data);return;}
+  $("addPhotoFile").click();};
+$("addPhotoFile").onchange=async e=>{const f=e.target.files&&e.target.files[0];e.target.value="";if(!f)return;
+  drawAddPhoto("Saving photo…");try{window.addPhoto=await shrinkPhoto(f);}catch(_){toast("Couldn't read that photo. Try again.");}drawAddPhoto();};
+/* edit sheet */
+function drawEditPhoto(t){const p=editPhoto.state==="none"||editPhoto.state==="removed"?null:editPhoto;$("editPhotoField").innerHTML=photoFieldHTML(p&&p.data?p:null,t);}
+async function loadEditPhoto(e){editPhoto={state:"none",data:null,bytes:0,loadedFor:e.id};
+  if(!e.photo||!photosColl){drawEditPhoto();return;}
+  drawEditPhoto("Loading photo…");
+  try{const d=await photosColl.doc(e.id).get();if(editPhoto.loadedFor!==e.id)return;
+    if(d.exists){const v=d.data();editPhoto={state:"keep",data:v.data,bytes:v.bytes||Math.round((v.data||"").length*0.75),loadedFor:e.id};}
+    drawEditPhoto();}catch(_){if(editPhoto.loadedFor===e.id)drawEditPhoto("Couldn't load the photo. Check your connection.");}}
+$("editPhotoField").onclick=e=>{const a=e.target.closest("[data-act]");if(!a)return;const act=a.dataset.act;
+  if(act==="remove"){e.stopPropagation();editPhoto={state:"removed",data:null,bytes:0,loadedFor:editPhoto.loadedFor};drawEditPhoto();return;}
+  if(act==="view"){openViewer(editPhoto.data);return;}
+  $("editPhotoFile").click();};
+$("editPhotoFile").onchange=async e=>{const f=e.target.files&&e.target.files[0];e.target.value="";if(!f)return;
+  drawEditPhoto("Saving photo…");try{const p=await shrinkPhoto(f);editPhoto={state:"new",data:p.data,bytes:p.bytes,loadedFor:editPhoto.loadedFor};}catch(_){toast("Couldn't read that photo. Try again.");}drawEditPhoto();};
+/* stats, clear all, auto-clear */
+function drawPhotoStats(){const withP=entries.filter(e=>e.photo);const bytes=withP.reduce((t,e)=>t+(e.photoBytes||0),0);
+  $("photoSum").textContent=withP.length?plural(withP.length,"photo"):"";
+  $("photoUsage").textContent=withP.length?`${plural(withP.length,"photo")} using ${kb(bytes)} of your free 1 GB (${Math.max(0.01,bytes/1073741824*100).toFixed(2)}%).`:"No photos saved.";
+  $("clearPhotos").disabled=!withP.length;}
+async function clearPhotos(list){if(!coll||!photosColl||!list.length)return 0;const del=firebase.firestore.FieldValue.delete();
+  for(let i=0;i<list.length;i+=200){const b=fs.batch();
+    list.slice(i,i+200).forEach(e=>{b.delete(photosColl.doc(e.id));b.update(coll.doc(e.id),{photo:del,photoBytes:del,photoTs:del});});
+    await b.commit();}
+  return list.length;}
+$("clearPhotos").onclick=()=>{$("clearPhotos").hidden=true;$("clearConfirm").hidden=false;};
+$("clearKeep").onclick=()=>{$("clearConfirm").hidden=true;$("clearPhotos").hidden=false;};
+$("clearYes").onclick=async()=>{$("clearConfirm").hidden=true;$("clearPhotos").hidden=false;
+  try{const n=await clearPhotos(entries.filter(e=>e.photo));toast(n?"Deleted "+plural(n,"photo"):"No photos to delete");}
+  catch(_){toast("Couldn't delete all photos. Try again.");}};
+$("autoClear").onchange=e=>{const d=+e.target.value;if(!settingsRef)return;
+  settingsRef.set({autoClearDays:d},{merge:true}).catch(()=>toast("Couldn't save that setting."));
+  toast(d?"Photos older than "+d+" days will be cleared":"Auto-clear is off");autoClearRan=false;setTimeout(maybeAutoClear,300);};
+async function maybeAutoClear(){const d=+(settings.autoClearDays||0);if(!d||autoClearRan||!ready||!coll)return;autoClearRan=true;
+  const cutoff=Date.now()-d*86400000;const old=entries.filter(e=>e.photo&&(e.photoTs||e.ts)<cutoff);
+  if(!old.length)return;try{const n=await clearPhotos(old);if(n)toast("Auto-cleared "+plural(n,"photo")+" older than "+d+" days");}catch(_){autoClearRan=false;}}
+
 /* ---------- add ---------- */
 $("addForm").onsubmit=ev=>{ev.preventDefault();const err=$("formErr");err.hidden=true;
   const cents=parseCents($("price").value);
   if(cents===null||cents<=0){err.textContent="Enter the price you paid, like 45 or 45.99.";err.hidden=false;$("price").focus();return;}
   if(!coll)return;
   const now=new Date();const qty=getQty("qty");const rec={cert:cleanCert($("cert").value),name:$("name").value.trim(),cat:selCat,cents,qty,ts:now.getTime(),day:dayKey(now)};
-  const ref=coll.doc();lastAddedId=ref.id;
-  ref.set(rec).catch(()=>toast("Couldn't save that purchase. Try adding it again."));
+  const ref=coll.doc();lastAddedId=ref.id;const ph=window.addPhoto;
+  if(ph&&photosColl){rec.photo=true;rec.photoBytes=ph.bytes;rec.photoTs=rec.ts;
+    const b=fs.batch();b.set(ref,rec);b.set(photosColl.doc(ref.id),{data:ph.data,bytes:ph.bytes,ts:rec.ts});
+    b.commit().catch(()=>toast("Couldn't save that purchase. Try adding it again."));}
+  else ref.set(rec).catch(()=>toast("Couldn't save that purchase. Try adding it again."));
+  window.addPhoto=null;drawAddPhoto();
   $("cert").value="";$("name").value="";$("price").value="";setQty("qty",1);$("dupNote").hidden=true;$("scanHint").hidden=true;
   $("price").blur();toast("Added "+money(cents)+(qty>1?" for "+qty+" cards":"")+" at "+fmtTime(rec.ts));};
 
@@ -575,13 +691,18 @@ $("cashForm").onsubmit=ev=>{ev.preventDefault();if(!cashRef)return;const err=$("
 function openEdit(id){const e=entries.find(x=>x.id===id);if(!e)return;editing=e;editCat=e.cat;
   $("eCert").value=e.cert||"";$("eName").value=e.name||"";$("ePrice").value=(e.cents/100).toFixed(2);setQty("eQty",qtyOf(e));
   $("editWhen").textContent="Logged "+fmtDay(e.day,true)+" at "+fmtTime(e.ts);
-  drawCats($("eCats"),editCat,k=>editCat=k);$("eConfirm").hidden=true;$("eDelete").hidden=false;$("scrim").hidden=false;}
-const closeEdit=()=>{$("scrim").hidden=true;editing=null;};
+  drawCats($("eCats"),editCat,k=>editCat=k);$("eConfirm").hidden=true;$("eDelete").hidden=false;$("scrim").hidden=false;loadEditPhoto(e);}
+const closeEdit=()=>{$("scrim").hidden=true;editing=null;editPhoto={state:"none",data:null,bytes:0,loadedFor:null};$("editPhotoField").innerHTML="";};
 $("eCancel").onclick=closeEdit;$("scrim").onclick=e=>{if(e.target.id==="scrim")closeEdit();};
 $("editForm").onsubmit=ev=>{ev.preventDefault();if(!editing||!coll)return;
   const cents=parseCents($("ePrice").value);if(cents===null||cents<=0){toast("Enter a valid price");return;}
   const rec={cert:cleanCert($("eCert").value),name:$("eName").value.trim(),cat:editCat,cents,qty:getQty("eQty"),ts:editing.ts,day:editing.day};
-  coll.doc(editing.id).set(rec).catch(()=>toast("Couldn't save. Try again."));toast("Saved");closeEdit();};
+  const id=editing.id,b=fs.batch();
+  if(editPhoto.state==="new"){rec.photo=true;rec.photoBytes=editPhoto.bytes;rec.photoTs=Date.now();b.set(photosColl.doc(id),{data:editPhoto.data,bytes:editPhoto.bytes,ts:rec.photoTs});}
+  else if(editPhoto.state==="removed"){b.delete(photosColl.doc(id));}
+  else if(editing.photo){rec.photo=true;rec.photoBytes=editing.photoBytes||editPhoto.bytes||0;rec.photoTs=editing.photoTs||editing.ts;}
+  b.set(coll.doc(id),rec);
+  b.commit().catch(()=>toast("Couldn't save. Try again."));toast("Saved");closeEdit();};
 $("eDelete").onclick=()=>{$("eDelete").hidden=true;$("eConfirm").hidden=false;};
 $("eKeep").onclick=()=>{$("eConfirm").hidden=true;$("eDelete").hidden=false;};
 $("eDeleteYes").onclick=()=>{if(!editing)return;const id=editing.id;closeEdit();removeEntry(id);};
@@ -592,7 +713,11 @@ function closeSwipe(w){if(!w)return;w.classList.remove("open");const s=w.querySe
   setTimeout(()=>{if(!w.classList.contains("open")&&!(drag&&drag.w===w))w.classList.remove("reveal");},230);if(openSwipe===w)openSwipe=null;}
 function removeEntry(id){const e=entries.find(x=>x.id===id);if(!e||!coll)return;const{id:_,...data}=e;
   coll.doc(id).delete().catch(()=>toast("Couldn't delete. Try again."));
-  toast("Deleted "+money(e.cents),"Undo",()=>{coll.doc(id).set(data).catch(()=>toast("Couldn't restore. Add it again."));toast("Restored");});}
+  /* keep the photo for the Undo window, then delete it */
+  let photoData=null;const photoGot=e.photo&&photosColl?photosColl.doc(id).get().then(d=>{photoData=d.exists?d.data():null;return photosColl.doc(id).delete();}).catch(()=>{}):Promise.resolve();
+  toast("Deleted "+money(e.cents),"Undo",async()=>{await photoGot;const b=fs.batch();b.set(coll.doc(id),data);
+    if(photoData)b.set(photosColl.doc(id),photoData);else if(data.photo){delete data.photo;delete data.photoBytes;delete data.photoTs;b.set(coll.doc(id),data);}
+    b.commit().catch(()=>toast("Couldn't restore. Add it again."));toast("Restored");});}
 document.addEventListener("pointerdown",e=>{const s=e.target.closest(".slab");if(!s||e.button>0)return;const w=s.parentElement;
   if(openSwipe&&openSwipe!==w)closeSwipe(openSwipe);
   drag={s,w,x:e.clientX,y:e.clientY,base:w.classList.contains("open")?-OPEN_W:0,dx:0,lock:null,pid:e.pointerId};drag.dx=drag.base;});

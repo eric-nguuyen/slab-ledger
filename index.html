@@ -17,6 +17,7 @@
   --bg:#f3f3f1; --surface:#ffffff; --fg:#17181b; --muted:#6b6d73; --line:#dcdcd8;
   --accent:#c4122f; --accent-ink:#ffffff; --accent-soft:#fbe7ea;
   --warn:#9a5b00; --warn-soft:#fff3dc;
+  --gain:#1f7a4d; --gain-soft:#e3f3ea; --loss:#c4122f; --loss-soft:#fbe7ea;
   --c-pokemon:#d8a200; --c-basketball:#d4560f; --c-baseball:#1f5fa8; --c-football:#4b6b2a;
   --f-display:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
   --f-mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
@@ -26,6 +27,7 @@
   --bg:#111214; --surface:#1b1c1f; --fg:#eceae6; --muted:#9b9da3; --line:#2e3034;
   --accent:#ff4d64; --accent-ink:#1a0a0d; --accent-soft:#3a1a20;
   --warn:#f2b14c; --warn-soft:#3a2c12;
+  --gain:#5fd39a; --gain-soft:#173326; --loss:#ff6b7f; --loss-soft:#3a1a20;
   --c-pokemon:#f2c230; --c-basketball:#ff8a4a; --c-baseball:#6ea6ef; --c-football:#9bc46a;
   color-scheme:dark}}
 *{box-sizing:border-box}
@@ -50,6 +52,7 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 .minis{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:8px}
 .mini{font-size:11px;letter-spacing:.06em;text-transform:uppercase;opacity:.85}
 .mini b{display:block;font-size:16px;letter-spacing:0;text-transform:none;opacity:1;font-weight:700}
+.band-profit{font-size:13px;font-weight:700;margin-top:2px}
 .cash-row{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:12px;padding:10px 12px;border-radius:10px;background:rgba(255,255,255,.14)}
 .cash-row .lbl2{font-size:11px;letter-spacing:.08em;text-transform:uppercase;opacity:.85}
 .cash-row b{display:block;font-size:22px;font-weight:800;letter-spacing:-.01em}
@@ -59,7 +62,7 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 .brand{font-weight:800;letter-spacing:.14em;text-transform:uppercase}
 
 /* tabs */
-.tabs{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:14px 0}
+.tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:14px 0}
 .tab{font:inherit;font-weight:700;font-size:15px;padding:10px;border-radius:999px;border:1px solid var(--line);background:var(--surface);color:var(--fg);cursor:pointer}
 .tab[aria-selected="true"]{background:var(--fg);color:var(--bg);border-color:var(--fg)}
 .tab:focus-visible,button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
@@ -124,6 +127,27 @@ input.in{width:100%;font:inherit;font-size:17px;padding:11px 12px;border:1px sol
 .catbar{display:grid;grid-template-columns:96px 1fr auto;gap:8px;align-items:center;font-size:13px}
 .catbar .track{height:8px;background:var(--bg);border:1px solid var(--line);border-radius:4px;overflow:hidden}
 .catbar .fill{display:block;height:100%}
+/* profit tab */
+.pf-sum{display:grid;gap:4px}
+.pf-line{display:flex;justify-content:space-between;align-items:baseline;gap:12px;font-size:15px}
+.pf-line b{font-weight:800}
+.pf-big{display:flex;justify-content:space-between;align-items:baseline;gap:12px;border-top:1px solid var(--line);padding-top:10px;margin-top:6px}
+.pf-big span{font-size:13px;font-weight:800;letter-spacing:.08em;text-transform:uppercase}
+.pf-big b{font-size:34px;font-weight:800;letter-spacing:-.01em}
+.gain{color:var(--gain)} .loss{color:var(--loss)}
+.pay-row{display:grid;grid-template-columns:1fr auto;gap:8px}
+.pay-list{display:grid;gap:6px}
+.pay-item{display:flex;align-items:center;gap:10px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg)}
+.pay-item .n{color:var(--muted);font-size:12px;font-weight:700;min-width:22px}
+.pay-item b{flex:1;font-weight:700}
+.pay-item .t{color:var(--muted);font-size:12px}
+.pay-item button{font:inherit;font-weight:800;width:30px;height:30px;border-radius:50%;border:1px solid var(--line);background:var(--surface);color:var(--muted);cursor:pointer;padding:0}
+.pf-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.pf-stat{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:10px}
+.pf-stat span{display:block;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.pf-stat b{display:block;font-size:17px;font-weight:800;margin-top:2px}
+.day-row .pf{font-weight:800}
+
 /* photo field */
 .photo-field{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .photo-btn{display:inline-flex;align-items:center;gap:8px}
@@ -222,6 +246,7 @@ input.in{width:100%;font:inherit;font-size:17px;padding:11px 12px;border:1px sol
     <div class="band-body" id="bandBody">
       <div class="spent-lbl">Spent today</div>
       <div class="today-total num" id="todayTotal">$0.00</div>
+      <div class="band-profit num" id="bandProfit" hidden></div>
       <div class="minis num">
         <div class="mini">This week<b id="weekTotal">$0.00</b></div>
         <div class="mini">This month<b id="monthTotal">$0.00</b></div>
@@ -235,6 +260,7 @@ input.in{width:100%;font:inherit;font-size:17px;padding:11px 12px;border:1px sol
   <div class="tabs" role="tablist">
     <button class="tab" role="tab" id="tabLog" aria-selected="true">Log a buy</button>
     <button class="tab" role="tab" id="tabHist" aria-selected="false">History</button>
+    <button class="tab" role="tab" id="tabProfit" aria-selected="false">Profit</button>
   </div>
 
   <section id="viewLog">
@@ -319,6 +345,43 @@ input.in{width:100%;font:inherit;font-size:17px;padding:11px 12px;border:1px sol
       <button class="btn link" id="signOut" type="button">Sign out</button>
     </div>
   </section>
+
+  <section id="viewProfit" hidden>
+    <div class="card">
+      <div class="hist-controls">
+        <div><label class="lbl" for="pfDate">Day</label><input class="in" type="date" id="pfDate"></div>
+        <button class="btn" id="pfToday" type="button">Today</button>
+      </div>
+      <div class="pf-sum num">
+        <div class="pf-line"><span>Spent <span class="hint" id="pfSpentNote"></span></span><b id="pfSpent">$0.00</b></div>
+        <div class="pf-line"><span>Payouts</span><b id="pfPaid">$0.00</b></div>
+        <div class="pf-big"><span>Profit</span><b id="pfProfit">$0.00</b></div>
+      </div>
+    </div>
+
+    <div class="sec"><h2>Add payouts</h2><span class="sum num" id="pfCount"></span></div>
+    <form class="card" id="payForm" autocomplete="off">
+      <div class="pay-row">
+        <div class="price-wrap"><span>$</span><input class="in" id="payAmt" inputmode="decimal" placeholder="0.00" aria-label="Payout amount"></div>
+        <button class="btn primary" type="submit" id="payAdd" style="font-size:16px;padding:11px 18px">+ Add</button>
+      </div>
+      <div class="hint">Add each payout one at a time. The total adds up as you go.</div>
+      <div class="note warn" id="payErr" hidden></div>
+      <div class="pay-list" id="payList"></div>
+    </form>
+
+    <div class="sec"><h2>Totals</h2></div>
+    <div class="pf-stats num">
+      <div class="pf-stat"><span>This week</span><b id="pfWeek">$0.00</b></div>
+      <div class="pf-stat"><span>This month</span><b id="pfMonth">$0.00</b></div>
+      <div class="pf-stat"><span>All time</span><b id="pfAll">$0.00</b></div>
+    </div>
+    <div class="hint" style="margin-top:6px">Totals include days you've entered payouts for.</div>
+
+    <div class="sec"><h2>Days with payouts</h2></div>
+    <div class="list" id="pfDays"></div>
+    <div class="foot"><button class="btn" id="pfExport" type="button">Export profit CSV</button></div>
+  </section>
 </div>
 
 <!-- edit sheet -->
@@ -379,11 +442,11 @@ input.in{width:100%;font:inherit;font-size:17px;padding:11px 12px;border:1px sol
 <script src="https://unpkg.com/@zxing/library@0.21.3/umd/index.min.js"></script>
 <script>
 /* ---------- updates: GitHub Pages lets phones reuse a saved copy for ~10 minutes, so check for a newer version on open ---------- */
-const APP_VERSION="1.9";
+const APP_VERSION="2.0";
 document.getElementById("verLabel").textContent="App version "+APP_VERSION;
 function busy(){return !document.getElementById("scanner").hidden||!document.getElementById("scrim").hidden||!document.getElementById("cashScrim").hidden||
   !document.getElementById("viewer").hidden||!!window.addPhoto||
-  ["cert","name","price"].some(id=>document.getElementById(id).value.trim()!=="");}
+  ["cert","name","price","payAmt"].some(id=>document.getElementById(id).value.trim()!=="");}
 async function checkForUpdate(){
   try{const r=await fetch(location.pathname+"?check="+Date.now(),{cache:"no-store"});if(!r.ok)return;
     const m=(await r.text()).match(/const APP_VERSION="([^"]+)"/);if(!m||m[1]===APP_VERSION)return;
@@ -411,7 +474,7 @@ fs.enablePersistence({synchronizeTabs:true}).catch(()=>{});
 const CATS=[{k:"pokemon",n:"Pokémon"},{k:"basketball",n:"Basketball"},{k:"baseball",n:"Baseball"},{k:"football",n:"Football"}];
 const catName=k=>(CATS.find(c=>c.k===k)||{n:"Other"}).n;
 const $=id=>document.getElementById(id);
-let photosColl=null,settingsRef=null,settingsUnsub=null,settings={},autoClearRan=false,cashRef=null,cashUnsub=null,cash=null,coll=null,unsub=null,entries=[],ready=false,selCat="pokemon",editCat="pokemon",editing=null,histDay=null,lastAddedId=null;
+let payColl=null,payUnsub=null,payouts={},pfDay=null,photosColl=null,settingsRef=null,settingsUnsub=null,settings={},autoClearRan=false,cashRef=null,cashUnsub=null,cash=null,coll=null,unsub=null,entries=[],ready=false,selCat="pokemon",editCat="pokemon",editing=null,histDay=null,lastAddedId=null;
 
 /* ---------- helpers ---------- */
 const pad=n=>String(n).padStart(2,"0");
@@ -463,13 +526,16 @@ auth.onAuthStateChanged(u=>{
   if(unsub){unsub();unsub=null;}
   if(cashUnsub){cashUnsub();cashUnsub=null;}
   if(settingsUnsub){settingsUnsub();settingsUnsub=null;}
-  if(!u){entries=[];coll=null;cashRef=null;cash=null;photosColl=null;settingsRef=null;settings={};ready=false;$("appView").hidden=true;$("authView").hidden=false;setMode(false);return;}
+  if(payUnsub){payUnsub();payUnsub=null;}payouts={};
+  if(!u){entries=[];coll=null;cashRef=null;cash=null;photosColl=null;settingsRef=null;settings={};payColl=null;ready=false;$("appView").hidden=true;$("authView").hidden=false;setMode(false);return;}
   $("authView").hidden=true;$("appView").hidden=false;$("who").textContent="Signed in as "+(u.email||"you");
   coll=fs.collection("users").doc(u.uid).collection("purchases");ready=false;cash=null;
   cashRef=fs.collection("users").doc(u.uid).collection("meta").doc("cash");
   cashUnsub=cashRef.onSnapshot(d=>{cash=d.exists?d.data():null;render();},()=>{});
   photosColl=fs.collection("users").doc(u.uid).collection("photos");autoClearRan=false;
   settingsRef=fs.collection("users").doc(u.uid).collection("meta").doc("settings");
+  payColl=fs.collection("users").doc(u.uid).collection("payouts");
+  payUnsub=payColl.onSnapshot(snap=>{const m={};snap.docs.forEach(d=>{m[d.id]=d.data();});payouts=m;render();},()=>{});
   settingsUnsub=settingsRef.onSnapshot(d=>{settings=d.exists?d.data():{};$("autoClear").value=String(settings.autoClearDays||0);maybeAutoClear();},()=>{});
   render();
   unsub=coll.orderBy("ts","desc").onSnapshot({includeMetadataChanges:true},snap=>{
@@ -505,6 +571,8 @@ function render(){
   $("cashBtn").textContent=coh===null?"Set up":"Update";
   if(!$("cashScrim").hidden)drawCashSheet();
   drawPhotoStats();
+  const pt=payTotal(tk),bp=$("bandProfit");bp.hidden=!payouts[tk];if(payouts[tk])bp.textContent="Profit today "+signed(pt-sum(today));
+  renderProfit();
   $("todayList").innerHTML=today.length?today.map(e=>slabHTML(e)).join(""):`<div class="empty">${ready?"No buys logged today. Tap Scan or type a cert number above, add the price, and tap Add purchase.":"Loading your purchases…"}</div>`;
   renderHist();
 }
@@ -561,12 +629,56 @@ $("band").onclick=()=>setBand($("band").getAttribute("aria-expanded")==="true",t
 $("band").onkeydown=e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();$("band").click();}};
 
 /* ---------- tabs + history controls ---------- */
-function showTab(h){$("tabLog").setAttribute("aria-selected",!h);$("tabHist").setAttribute("aria-selected",h);$("viewLog").hidden=h;$("viewHist").hidden=!h;}
-$("tabLog").onclick=()=>showTab(false);$("tabHist").onclick=()=>showTab(true);
+const TABS={Log:"viewLog",Hist:"viewHist",Profit:"viewProfit"};
+function showTab(name){Object.keys(TABS).forEach(k=>{$("tab"+k).setAttribute("aria-selected",k===name);$(TABS[k]).hidden=k!==name;});
+  try{sessionStorage.setItem("tab",name);}catch(_){}}
+Object.keys(TABS).forEach(k=>$("tab"+k).onclick=()=>showTab(k));
+try{const t=sessionStorage.getItem("tab");if(TABS[t])showTab(t);}catch(_){}
 $("pickDate").onchange=e=>{if(e.target.value){histDay=e.target.value;renderHist();}};
 $("todayBtn").onclick=()=>{histDay=dayKey(new Date());$("search").value="";renderHist();};
 $("dayIndex").onclick=e=>{const b=e.target.closest(".day-row");if(!b)return;histDay=b.dataset.day;$("search").value="";renderHist();window.scrollTo({top:0,behavior:"smooth"});};
 $("search").oninput=()=>renderHist();
+
+/* ---------- profit: payouts - spent, per day ---------- */
+const payItems=day=>(payouts[day]&&Array.isArray(payouts[day].items))?payouts[day].items:[];
+const payTotal=day=>payItems(day).reduce((t,i)=>t+(i.c||0),0);
+const spentOn=day=>sum(entries.filter(e=>e.day===day));
+const signed=c=>(c>0?"+":c<0?"−":"")+money(Math.abs(c));
+const tone=(el,c)=>{el.classList.toggle("gain",c>0);el.classList.toggle("loss",c<0);};
+function profitOver(days){return days.reduce((t,d)=>t+payTotal(d)-spentOn(d),0);}
+function renderProfit(){if(!pfDay)pfDay=dayKey(new Date());$("pfDate").value=pfDay;
+  const sp=spentOn(pfDay),pd=payTotal(pfDay),pr=pd-sp,n=entries.filter(e=>e.day===pfDay);
+  $("pfSpent").textContent=money(sp);$("pfSpentNote").textContent=n.length?"("+plural(n.length,"buy")+")":"";
+  $("pfPaid").textContent=money(pd);const pe=$("pfProfit");pe.textContent=signed(pr);tone(pe,pr);
+  const items=payItems(pfDay);$("pfCount").textContent=items.length?plural(items.length,"payout"):"";
+  $("payList").innerHTML=items.map((it,i)=>`<div class="pay-item"><span class="n">${i+1}</span><b class="num">${money(it.c)}</b><span class="t">${it.t?fmtTime(it.t):""}</span><button type="button" data-i="${i}" aria-label="Remove ${money(it.c)}">×</button></div>`).join("");
+  const days=Object.keys(payouts).filter(d=>payItems(d).length).sort().reverse();
+  const now=new Date(),mon=new Date(now);mon.setHours(0,0,0,0);mon.setDate(mon.getDate()-((mon.getDay()+6)%7));
+  const wk=dayKey(mon),mo=dayKey(new Date(now.getFullYear(),now.getMonth(),1));
+  [["pfWeek",days.filter(d=>d>=wk)],["pfMonth",days.filter(d=>d>=mo)],["pfAll",days]].forEach(([id,ds])=>{const v=profitOver(ds),el=$(id);el.textContent=signed(v);tone(el,v);});
+  $("pfDays").innerHTML=days.length?days.map(d=>{const v=payTotal(d)-spentOn(d);return`<button type="button" class="day-row" data-day="${d}" aria-current="${d===pfDay}"><span><span class="d">${esc(fmtDay(d))}</span><br><span class="c">${money(payTotal(d))} paid · ${money(spentOn(d))} spent</span></span><b class="num pf ${v>0?"gain":v<0?"loss":""}">${signed(v)}</b></button>`;}).join(""):`<div class="empty">Days show up here once you add payouts.</div>`;}
+async function savePayouts(day,items){if(!payColl)return;
+  const ref=payColl.doc(day);
+  try{if(items.length)await ref.set({items});else await ref.delete();}catch(_){toast("Couldn't save payouts. Try again.");}}
+$("payForm").onsubmit=ev=>{ev.preventDefault();const err=$("payErr");err.hidden=true;
+  const parts=$("payAmt").value.split(/[+\s]+/).filter(Boolean);
+  if(!parts.length){$("payAmt").focus();return;}
+  const vals=parts.map(parseCents);
+  if(vals.some(v=>v===null||v<=0)){err.textContent="Enter a payout amount, like 120 or 45.50.";err.hidden=false;return;}
+  const now=Date.now();const items=payItems(pfDay).concat(vals.map(c=>({c,t:now})));
+  payouts[pfDay]={items};savePayouts(pfDay,items);$("payAmt").value="";renderProfit();
+  toast(vals.length>1?"Added "+plural(vals.length,"payout")+" · "+money(vals.reduce((a,b)=>a+b,0)):"Added "+money(vals[0]));};
+/* keep the keyboard up when tapping + Add */
+$("payAdd").addEventListener("pointerdown",e=>{if(document.activeElement===$("payAmt"))e.preventDefault();});
+$("payList").onclick=e=>{const b=e.target.closest("button[data-i]");if(!b)return;const day=pfDay,items=payItems(day).slice();const [gone]=items.splice(+b.dataset.i,1);
+  payouts[day]={items};savePayouts(day,items);renderProfit();
+  toast("Removed "+money(gone.c),"Undo",()=>{const back=payItems(day).slice();back.splice(+b.dataset.i,0,gone);payouts[day]={items:back};savePayouts(day,back);renderProfit();});};
+$("pfDate").onchange=e=>{if(e.target.value){pfDay=e.target.value;renderProfit();}};
+$("pfToday").onclick=()=>{pfDay=dayKey(new Date());renderProfit();};
+$("pfDays").onclick=e=>{const b=e.target.closest(".day-row");if(!b)return;pfDay=b.dataset.day;renderProfit();window.scrollTo({top:0,behavior:"smooth"});};
+$("pfExport").onclick=async()=>{const days=Object.keys(payouts).filter(d=>payItems(d).length).sort();if(!days.length){toast("No payouts to export yet");return;}
+  const rows=[["Date","Spent","Payouts","Profit","Payout amounts"]].concat(days.map(d=>[d,(spentOn(d)/100).toFixed(2),(payTotal(d)/100).toFixed(2),((payTotal(d)-spentOn(d))/100).toFixed(2),payItems(d).map(i=>(i.c/100).toFixed(2)).join(" + ")]));
+  await shareCSV("slab-ledger-profit-"+dayKey(new Date())+".csv",csvOf(rows));};
 
 /* ---------- duplicate check ---------- */
 function checkDup(){const c=cleanCert($("cert").value);const n=$("dupNote");const hit=c?entries.find(e=>e.cert===c):null;
@@ -842,9 +954,10 @@ $("scanFile").onchange=async e=>{const f=e.target.files&&e.target.files[0];e.tar
 function csvOf(rows){return rows.map(r=>r.map(v=>{v=String(v??"");return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;}).join(",")).join("\n");}
 $("exportBtn").onclick=async()=>{if(!entries.length){toast("Nothing to export yet");return;}
   const rows=[["Date","Time","Category","Card","PSA cert","Qty","Price"]].concat([...entries].sort((a,b)=>a.ts-b.ts).map(e=>[e.day,fmtTime(e.ts),catName(e.cat),e.name||"",e.cert||"",qtyOf(e),(e.cents/100).toFixed(2)]));
-  const name="slab-ledger-"+dayKey(new Date())+".csv";const blob=new Blob([csvOf(rows)],{type:"text/csv"});
+  await shareCSV("slab-ledger-"+dayKey(new Date())+".csv",csvOf(rows));};
+async function shareCSV(name,text){const blob=new Blob([text],{type:"text/csv"});
   try{const file=new File([blob],name,{type:"text/csv"});if(navigator.canShare&&navigator.canShare({files:[file]})){await navigator.share({files:[file],title:name});return;}}catch(e){if(e&&e.name==="AbortError")return;}
-  const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),4000);};
+  const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),4000);}
 function parseCSV(t){const rows=[];let row=[],f="",q=false;t=t.replace(/^﻿/,"");
   for(let i=0;i<t.length;i++){const c=t[i];
     if(q){if(c==='"'){if(t[i+1]==='"'){f+='"';i++;}else q=false;}else f+=c;}

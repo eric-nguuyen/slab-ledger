@@ -442,7 +442,7 @@ input.in{width:100%;font:inherit;font-size:17px;padding:11px 12px;border:1px sol
 <script src="https://unpkg.com/@zxing/library@0.21.3/umd/index.min.js"></script>
 <script>
 /* ---------- updates: GitHub Pages lets phones reuse a saved copy for ~10 minutes, so check for a newer version on open ---------- */
-const APP_VERSION="2.0";
+const APP_VERSION="2.1";
 document.getElementById("verLabel").textContent="App version "+APP_VERSION;
 function busy(){return !document.getElementById("scanner").hidden||!document.getElementById("scrim").hidden||!document.getElementById("cashScrim").hidden||
   !document.getElementById("viewer").hidden||!!window.addPhoto||
@@ -474,7 +474,7 @@ fs.enablePersistence({synchronizeTabs:true}).catch(()=>{});
 const CATS=[{k:"pokemon",n:"Pokémon"},{k:"basketball",n:"Basketball"},{k:"baseball",n:"Baseball"},{k:"football",n:"Football"}];
 const catName=k=>(CATS.find(c=>c.k===k)||{n:"Other"}).n;
 const $=id=>document.getElementById(id);
-let payColl=null,payUnsub=null,payouts={},pfDay=null,photosColl=null,settingsRef=null,settingsUnsub=null,settings={},autoClearRan=false,cashRef=null,cashUnsub=null,cash=null,coll=null,unsub=null,entries=[],ready=false,selCat="pokemon",editCat="pokemon",editing=null,histDay=null,lastAddedId=null;
+let payColl=null,payUnsub=null,payouts={},photosColl=null,settingsRef=null,settingsUnsub=null,settings={},autoClearRan=false,cashRef=null,cashUnsub=null,cash=null,coll=null,unsub=null,entries=[],ready=false,selCat="pokemon",editCat="pokemon",editing=null,histDay=null,lastAddedId=null;
 
 /* ---------- helpers ---------- */
 const pad=n=>String(n).padStart(2,"0");
@@ -631,7 +631,9 @@ $("band").onkeydown=e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();$("b
 /* ---------- tabs + history controls ---------- */
 const TABS={Log:"viewLog",Hist:"viewHist",Profit:"viewProfit"};
 function showTab(name){Object.keys(TABS).forEach(k=>{$("tab"+k).setAttribute("aria-selected",k===name);$(TABS[k]).hidden=k!==name;});
-  try{sessionStorage.setItem("tab",name);}catch(_){}}
+  try{sessionStorage.setItem("tab",name);}catch(_){}
+  /* History and Profit share one selected day; redraw so the tab you open shows it */
+  if(name==="Hist")renderHist();else if(name==="Profit")renderProfit();}
 Object.keys(TABS).forEach(k=>$("tab"+k).onclick=()=>showTab(k));
 try{const t=sessionStorage.getItem("tab");if(TABS[t])showTab(t);}catch(_){}
 $("pickDate").onchange=e=>{if(e.target.value){histDay=e.target.value;renderHist();}};
@@ -646,17 +648,17 @@ const spentOn=day=>sum(entries.filter(e=>e.day===day));
 const signed=c=>(c>0?"+":c<0?"−":"")+money(Math.abs(c));
 const tone=(el,c)=>{el.classList.toggle("gain",c>0);el.classList.toggle("loss",c<0);};
 function profitOver(days){return days.reduce((t,d)=>t+payTotal(d)-spentOn(d),0);}
-function renderProfit(){if(!pfDay)pfDay=dayKey(new Date());$("pfDate").value=pfDay;
-  const sp=spentOn(pfDay),pd=payTotal(pfDay),pr=pd-sp,n=entries.filter(e=>e.day===pfDay);
+function renderProfit(){if(!histDay)histDay=dayKey(new Date());$("pfDate").value=histDay;
+  const sp=spentOn(histDay),pd=payTotal(histDay),pr=pd-sp,n=entries.filter(e=>e.day===histDay);
   $("pfSpent").textContent=money(sp);$("pfSpentNote").textContent=n.length?"("+plural(n.length,"buy")+")":"";
   $("pfPaid").textContent=money(pd);const pe=$("pfProfit");pe.textContent=signed(pr);tone(pe,pr);
-  const items=payItems(pfDay);$("pfCount").textContent=items.length?plural(items.length,"payout"):"";
+  const items=payItems(histDay);$("pfCount").textContent=items.length?plural(items.length,"payout"):"";
   $("payList").innerHTML=items.map((it,i)=>`<div class="pay-item"><span class="n">${i+1}</span><b class="num">${money(it.c)}</b><span class="t">${it.t?fmtTime(it.t):""}</span><button type="button" data-i="${i}" aria-label="Remove ${money(it.c)}">×</button></div>`).join("");
   const days=Object.keys(payouts).filter(d=>payItems(d).length).sort().reverse();
   const now=new Date(),mon=new Date(now);mon.setHours(0,0,0,0);mon.setDate(mon.getDate()-((mon.getDay()+6)%7));
   const wk=dayKey(mon),mo=dayKey(new Date(now.getFullYear(),now.getMonth(),1));
   [["pfWeek",days.filter(d=>d>=wk)],["pfMonth",days.filter(d=>d>=mo)],["pfAll",days]].forEach(([id,ds])=>{const v=profitOver(ds),el=$(id);el.textContent=signed(v);tone(el,v);});
-  $("pfDays").innerHTML=days.length?days.map(d=>{const v=payTotal(d)-spentOn(d);return`<button type="button" class="day-row" data-day="${d}" aria-current="${d===pfDay}"><span><span class="d">${esc(fmtDay(d))}</span><br><span class="c">${money(payTotal(d))} paid · ${money(spentOn(d))} spent</span></span><b class="num pf ${v>0?"gain":v<0?"loss":""}">${signed(v)}</b></button>`;}).join(""):`<div class="empty">Days show up here once you add payouts.</div>`;}
+  $("pfDays").innerHTML=days.length?days.map(d=>{const v=payTotal(d)-spentOn(d);return`<button type="button" class="day-row" data-day="${d}" aria-current="${d===histDay}"><span><span class="d">${esc(fmtDay(d))}</span><br><span class="c">${money(payTotal(d))} paid · ${money(spentOn(d))} spent</span></span><b class="num pf ${v>0?"gain":v<0?"loss":""}">${signed(v)}</b></button>`;}).join(""):`<div class="empty">Days show up here once you add payouts.</div>`;}
 async function savePayouts(day,items){if(!payColl)return;
   const ref=payColl.doc(day);
   try{if(items.length)await ref.set({items});else await ref.delete();}catch(_){toast("Couldn't save payouts. Try again.");}}
@@ -665,17 +667,17 @@ $("payForm").onsubmit=ev=>{ev.preventDefault();const err=$("payErr");err.hidden=
   if(!parts.length){$("payAmt").focus();return;}
   const vals=parts.map(parseCents);
   if(vals.some(v=>v===null||v<=0)){err.textContent="Enter a payout amount, like 120 or 45.50.";err.hidden=false;return;}
-  const now=Date.now();const items=payItems(pfDay).concat(vals.map(c=>({c,t:now})));
-  payouts[pfDay]={items};savePayouts(pfDay,items);$("payAmt").value="";renderProfit();
+  const now=Date.now();const items=payItems(histDay).concat(vals.map(c=>({c,t:now})));
+  payouts[histDay]={items};savePayouts(histDay,items);$("payAmt").value="";renderProfit();
   toast(vals.length>1?"Added "+plural(vals.length,"payout")+" · "+money(vals.reduce((a,b)=>a+b,0)):"Added "+money(vals[0]));};
 /* keep the keyboard up when tapping + Add */
 $("payAdd").addEventListener("pointerdown",e=>{if(document.activeElement===$("payAmt"))e.preventDefault();});
-$("payList").onclick=e=>{const b=e.target.closest("button[data-i]");if(!b)return;const day=pfDay,items=payItems(day).slice();const [gone]=items.splice(+b.dataset.i,1);
+$("payList").onclick=e=>{const b=e.target.closest("button[data-i]");if(!b)return;const day=histDay,items=payItems(day).slice();const [gone]=items.splice(+b.dataset.i,1);
   payouts[day]={items};savePayouts(day,items);renderProfit();
   toast("Removed "+money(gone.c),"Undo",()=>{const back=payItems(day).slice();back.splice(+b.dataset.i,0,gone);payouts[day]={items:back};savePayouts(day,back);renderProfit();});};
-$("pfDate").onchange=e=>{if(e.target.value){pfDay=e.target.value;renderProfit();}};
-$("pfToday").onclick=()=>{pfDay=dayKey(new Date());renderProfit();};
-$("pfDays").onclick=e=>{const b=e.target.closest(".day-row");if(!b)return;pfDay=b.dataset.day;renderProfit();window.scrollTo({top:0,behavior:"smooth"});};
+$("pfDate").onchange=e=>{if(e.target.value){histDay=e.target.value;renderProfit();}};
+$("pfToday").onclick=()=>{histDay=dayKey(new Date());renderProfit();};
+$("pfDays").onclick=e=>{const b=e.target.closest(".day-row");if(!b)return;histDay=b.dataset.day;renderProfit();window.scrollTo({top:0,behavior:"smooth"});};
 $("pfExport").onclick=async()=>{const days=Object.keys(payouts).filter(d=>payItems(d).length).sort();if(!days.length){toast("No payouts to export yet");return;}
   const rows=[["Date","Spent","Payouts","Profit","Payout amounts"]].concat(days.map(d=>[d,(spentOn(d)/100).toFixed(2),(payTotal(d)/100).toFixed(2),((payTotal(d)-spentOn(d))/100).toFixed(2),payItems(d).map(i=>(i.c/100).toFixed(2)).join(" + ")]));
   await shareCSV("slab-ledger-profit-"+dayKey(new Date())+".csv",csvOf(rows));};

@@ -18,7 +18,7 @@
   --accent:#c4122f; --accent-ink:#ffffff; --accent-soft:#fbe7ea;
   --warn:#9a5b00; --warn-soft:#fff3dc;
   --gain:#1f7a4d; --gain-soft:#e3f3ea; --loss:#c4122f; --loss-soft:#fbe7ea;
-  --c-pokemon:#d8a200; --c-basketball:#d4560f; --c-baseball:#1f5fa8; --c-football:#4b6b2a;
+  --c-pokemon:#d8a200; --c-basketball:#d4560f; --c-baseball:#1f5fa8; --c-football:#4b6b2a; --c-misc:#6b5a8e;
   --f-display:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
   --f-mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
   --r:10px; color-scheme:light;
@@ -28,7 +28,7 @@
   --accent:#ff4d64; --accent-ink:#1a0a0d; --accent-soft:#3a1a20;
   --warn:#f2b14c; --warn-soft:#3a2c12;
   --gain:#5fd39a; --gain-soft:#173326; --loss:#ff6b7f; --loss-soft:#3a1a20;
-  --c-pokemon:#f2c230; --c-basketball:#ff8a4a; --c-baseball:#6ea6ef; --c-football:#9bc46a;
+  --c-pokemon:#f2c230; --c-basketball:#ff8a4a; --c-baseball:#6ea6ef; --c-football:#9bc46a; --c-misc:#b7a6dc;
   color-scheme:dark}}
 *{box-sizing:border-box}
 html,body{margin:0;background:var(--bg);color:var(--fg)}
@@ -81,6 +81,7 @@ input.in{width:100%;font:inherit;font-size:17px;padding:11px 12px;border:1px sol
 .scan-btn{display:inline-flex;align-items:center;gap:6px}
 .scan-btn svg{width:18px;height:18px}
 .cats{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.cats .cat:last-child:nth-child(odd){grid-column:1/-1}
 .cat{font:inherit;font-weight:600;padding:10px 8px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--fg);cursor:pointer;display:flex;align-items:center;gap:8px;justify-content:center}
 .cat i{width:10px;height:10px;border-radius:2px;display:inline-block}
 .cat[aria-pressed="true"]{border-color:var(--fg);box-shadow:inset 0 0 0 1px var(--fg);font-weight:800}
@@ -442,7 +443,7 @@ input.in{width:100%;font:inherit;font-size:17px;padding:11px 12px;border:1px sol
 <script src="https://unpkg.com/@zxing/library@0.21.3/umd/index.min.js"></script>
 <script>
 /* ---------- updates: GitHub Pages lets phones reuse a saved copy for ~10 minutes, so check for a newer version on open ---------- */
-const APP_VERSION="2.1";
+const APP_VERSION="2.2";
 document.getElementById("verLabel").textContent="App version "+APP_VERSION;
 function busy(){return !document.getElementById("scanner").hidden||!document.getElementById("scrim").hidden||!document.getElementById("cashScrim").hidden||
   !document.getElementById("viewer").hidden||!!window.addPhoto||
@@ -471,7 +472,7 @@ const auth=firebase.auth();
 const fs=firebase.firestore();
 fs.enablePersistence({synchronizeTabs:true}).catch(()=>{});
 
-const CATS=[{k:"pokemon",n:"Pokémon"},{k:"basketball",n:"Basketball"},{k:"baseball",n:"Baseball"},{k:"football",n:"Football"}];
+const CATS=[{k:"pokemon",n:"Pokémon"},{k:"basketball",n:"Basketball"},{k:"baseball",n:"Baseball"},{k:"football",n:"Football"},{k:"misc",n:"Misc"}];
 const catName=k=>(CATS.find(c=>c.k===k)||{n:"Other"}).n;
 const $=id=>document.getElementById(id);
 let payColl=null,payUnsub=null,payouts={},photosColl=null,settingsRef=null,settingsUnsub=null,settings={},autoClearRan=false,cashRef=null,cashUnsub=null,cash=null,coll=null,unsub=null,entries=[],ready=false,selCat="pokemon",editCat="pokemon",editing=null,histDay=null,lastAddedId=null;

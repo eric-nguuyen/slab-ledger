@@ -158,9 +158,10 @@ input.in{width:100%;font:inherit;font-size:17px;padding:11px 12px;border:1px sol
 .paid-btn{flex:none;min-width:110px;font-size:16px}
 .paid-btn[aria-pressed="true"]{background:var(--gain);border-color:var(--gain);color:#fff}
 .paid-note{font-size:13px;color:var(--muted);line-height:1.35}
-.pf-owed{grid-column:1/-1;text-align:center}
-.pf-owed b{font-size:22px}
-.pf-owed span span{display:inline}
+/* amount owed: label and day count stacked on the left, number on the right, both centered in the box */
+.pf-owed{grid-column:1/-1;display:flex;justify-content:space-between;align-items:center;gap:12px}
+.pf-owed b{font-size:22px;margin-top:0}
+.pf-owed .days{font-size:12px;font-weight:600;letter-spacing:0;text-transform:none;margin-top:2px}
 .tag{display:inline-block;font-size:11px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;padding:1px 6px;border-radius:4px;margin-left:6px;vertical-align:1px}
 .tag.paid{color:var(--gain);background:var(--gain-soft)}
 .tag.owed{color:var(--muted);border:1px solid var(--line)}
@@ -397,7 +398,7 @@ input.in{width:100%;font:inherit;font-size:17px;padding:11px 12px;border:1px sol
       <div class="pf-stat"><span>This week</span><b id="pfWeek">$0.00</b></div>
       <div class="pf-stat"><span>This month</span><b id="pfMonth">$0.00</b></div>
       <div class="pf-stat"><span>All time</span><b id="pfAll">$0.00</b></div>
-      <div class="pf-stat pf-owed"><span>Amount owed<span id="pfOwedNote"></span></span><b id="pfOwed">$0.00</b></div>
+      <div class="pf-stat pf-owed"><div><span>Amount owed</span><span class="days" id="pfOwedNote"></span></div><b id="pfOwed">$0.00</b></div>
     </div>
     <div class="hint" style="margin-top:6px">Profit totals include days you've entered payouts for. Amount owed adds up the payouts on days not marked Paid.</div>
 
@@ -465,7 +466,7 @@ input.in{width:100%;font:inherit;font-size:17px;padding:11px 12px;border:1px sol
 <script src="https://unpkg.com/@zxing/library@0.21.3/umd/index.min.js"></script>
 <script>
 /* ---------- updates: GitHub Pages lets phones reuse a saved copy for ~10 minutes, so check for a newer version on open ---------- */
-const APP_VERSION="2.6";
+const APP_VERSION="2.7";
 document.getElementById("verLabel").textContent="App version "+APP_VERSION;
 function busy(){return !document.getElementById("scanner").hidden||!document.getElementById("scrim").hidden||!document.getElementById("cashScrim").hidden||
   !document.getElementById("viewer").hidden||!!window.addPhoto||
@@ -696,7 +697,7 @@ function renderProfit(){if(!histDay)histDay=dayKey(new Date());$("pfDate").value
   [["pfWeek",days.filter(d=>d>=wk)],["pfMonth",days.filter(d=>d>=mo)],["pfAll",days]].forEach(([id,ds])=>{const v=profitOver(ds),el=$(id);el.textContent=signed(v);tone(el,v);});
   const owedDays=days.filter(d=>!paidAt(d));
   $("pfOwed").textContent=money(owedDays.reduce((t,d)=>t+payTotal(d),0));
-  $("pfOwedNote").textContent=owedDays.length?" · "+plural(owedDays.length,"day"):"";
+  $("pfOwedNote").textContent=owedDays.length?plural(owedDays.length,"day"):"Nothing owed";
   fitStats();
   $("pfDays").innerHTML=days.length?days.map(d=>{const v=payTotal(d)-spentOn(d);return`<button type="button" class="day-row" data-day="${d}" aria-current="${d===histDay}"><span><span class="d">${esc(fmtDay(d))}</span>${paidAt(d)?'<span class="tag paid">Paid</span>':'<span class="tag owed">Owed</span>'}<br><span class="c">${money(payTotal(d))} payout · ${money(spentOn(d))} spent</span></span><b class="num pf ${v>0?"gain":v<0?"loss":""}">${signed(v)}</b></button>`;}).join(""):`<div class="empty">Days show up here once you add payouts.</div>`;}
 async function savePayouts(day){if(!payColl)return;

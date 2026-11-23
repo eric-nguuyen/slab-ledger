@@ -148,18 +148,19 @@ input.in{width:100%;font:inherit;font-size:17px;padding:11px 12px;border:1px sol
 .pay-item b{flex:1;font-weight:700}
 .pay-item .t{color:var(--muted);font-size:12px}
 .pay-item button{font:inherit;font-weight:800;width:30px;height:30px;border-radius:50%;border:1px solid var(--line);background:var(--surface);color:var(--muted);cursor:pointer;padding:0}
-.pf-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.pf-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
 .pf-stat{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:10px}
 .pf-stat span{display:block;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
-.pf-stat b{display:block;font-size:17px;font-weight:800;margin-top:2px}
+.pf-stat b{display:block;font-size:17px;font-weight:800;margin-top:2px;white-space:nowrap}
 .day-row .pf{font-weight:800}
 /* paid toggle: outline when still owed, solid green once paid */
 .paid-row{display:flex;align-items:center;gap:12px;margin-top:12px;padding-top:12px;border-top:1px solid var(--line)}
 .paid-btn{flex:none;min-width:110px;font-size:16px}
 .paid-btn[aria-pressed="true"]{background:var(--gain);border-color:var(--gain);color:#fff}
 .paid-note{font-size:13px;color:var(--muted);line-height:1.35}
-.pf-owed{grid-column:1/-1;display:flex;justify-content:space-between;align-items:baseline;gap:12px}
-.pf-owed b{font-size:22px;margin-top:0}
+.pf-owed{grid-column:1/-1;text-align:center}
+.pf-owed b{font-size:22px}
+.pf-owed span span{display:inline}
 .tag{display:inline-block;font-size:11px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;padding:1px 6px;border-radius:4px;margin-left:6px;vertical-align:1px}
 .tag.paid{color:var(--gain);background:var(--gain-soft)}
 .tag.owed{color:var(--muted);border:1px solid var(--line)}
@@ -396,7 +397,7 @@ input.in{width:100%;font:inherit;font-size:17px;padding:11px 12px;border:1px sol
       <div class="pf-stat"><span>This week</span><b id="pfWeek">$0.00</b></div>
       <div class="pf-stat"><span>This month</span><b id="pfMonth">$0.00</b></div>
       <div class="pf-stat"><span>All time</span><b id="pfAll">$0.00</b></div>
-      <div class="pf-stat pf-owed"><span>Amount owed <span id="pfOwedNote" style="text-transform:none;letter-spacing:0;font-weight:600"></span></span><b id="pfOwed">$0.00</b></div>
+      <div class="pf-stat pf-owed"><span>Amount owed<span id="pfOwedNote"></span></span><b id="pfOwed">$0.00</b></div>
     </div>
     <div class="hint" style="margin-top:6px">Profit totals include days you've entered payouts for. Amount owed adds up the payouts on days not marked Paid.</div>
 
@@ -464,7 +465,7 @@ input.in{width:100%;font:inherit;font-size:17px;padding:11px 12px;border:1px sol
 <script src="https://unpkg.com/@zxing/library@0.21.3/umd/index.min.js"></script>
 <script>
 /* ---------- updates: GitHub Pages lets phones reuse a saved copy for ~10 minutes, so check for a newer version on open ---------- */
-const APP_VERSION="2.5";
+const APP_VERSION="2.6";
 document.getElementById("verLabel").textContent="App version "+APP_VERSION;
 function busy(){return !document.getElementById("scanner").hidden||!document.getElementById("scrim").hidden||!document.getElementById("cashScrim").hidden||
   !document.getElementById("viewer").hidden||!!window.addPhoto||
@@ -670,6 +671,8 @@ $("search").oninput=()=>renderHist();
 /* ---------- profit: payouts - spent, per day ---------- */
 const payItems=day=>(payouts[day]&&Array.isArray(payouts[day].items))?payouts[day].items:[];
 const payTotal=day=>payItems(day).reduce((t,i)=>t+(i.c||0),0);
+/* big totals: step the font down until the number fits its box */
+function fitStats(){document.querySelectorAll(".pf-stat b").forEach(b=>{b.style.fontSize="";if(!b.clientWidth)return;let f=parseFloat(getComputedStyle(b).fontSize);while(b.scrollWidth>b.clientWidth&&f>11){f-=.5;b.style.fontSize=f+"px";}});}
 /* payouts[day] = {items, paid?}; paid is the ms time the day was marked paid */
 const paidAt=day=>(payouts[day]&&payouts[day].paid)||0;
 const spentOn=day=>sum(entries.filter(e=>e.day===day));
@@ -693,7 +696,8 @@ function renderProfit(){if(!histDay)histDay=dayKey(new Date());$("pfDate").value
   [["pfWeek",days.filter(d=>d>=wk)],["pfMonth",days.filter(d=>d>=mo)],["pfAll",days]].forEach(([id,ds])=>{const v=profitOver(ds),el=$(id);el.textContent=signed(v);tone(el,v);});
   const owedDays=days.filter(d=>!paidAt(d));
   $("pfOwed").textContent=money(owedDays.reduce((t,d)=>t+payTotal(d),0));
-  $("pfOwedNote").textContent=owedDays.length?"· "+plural(owedDays.length,"day"):"";
+  $("pfOwedNote").textContent=owedDays.length?" · "+plural(owedDays.length,"day"):"";
+  fitStats();
   $("pfDays").innerHTML=days.length?days.map(d=>{const v=payTotal(d)-spentOn(d);return`<button type="button" class="day-row" data-day="${d}" aria-current="${d===histDay}"><span><span class="d">${esc(fmtDay(d))}</span>${paidAt(d)?'<span class="tag paid">Paid</span>':'<span class="tag owed">Owed</span>'}<br><span class="c">${money(payTotal(d))} payout · ${money(spentOn(d))} spent</span></span><b class="num pf ${v>0?"gain":v<0?"loss":""}">${signed(v)}</b></button>`;}).join(""):`<div class="empty">Days show up here once you add payouts.</div>`;}
 async function savePayouts(day){if(!payColl)return;
   const ref=payColl.doc(day),p=payouts[day]||{},items=Array.isArray(p.items)?p.items:[];

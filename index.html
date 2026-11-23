@@ -138,6 +138,11 @@ input.in{width:100%;font:inherit;font-size:17px;padding:11px 12px;border:1px sol
 .gain{color:var(--gain)} .loss{color:var(--loss)}
 .pay-row{display:grid;grid-template-columns:1fr auto;gap:8px}
 .pay-list{display:grid;gap:6px}
+.pay-list.anim{overflow:hidden}
+/* payout list fold: header row with count, total and a chevron */
+.pay-toggle{display:flex;align-items:center;gap:8px;width:100%;font:inherit;font-size:14px;font-weight:700;color:var(--fg);background:none;border:0;border-top:1px solid var(--line);padding:12px 2px 2px;cursor:pointer;text-align:left}
+.pay-toggle .chev{width:18px;height:18px;margin-left:auto;color:var(--muted);transition:transform .28s cubic-bezier(.2,.8,.2,1)}
+.pay-toggle[aria-expanded="true"] .chev{transform:rotate(180deg)}
 .pay-item{display:flex;align-items:center;gap:10px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg)}
 .pay-item .n{color:var(--muted);font-size:12px;font-weight:700;min-width:22px}
 .pay-item b{flex:1;font-weight:700}
@@ -374,7 +379,7 @@ input.in{width:100%;font:inherit;font-size:17px;padding:11px 12px;border:1px sol
       </div>
     </div>
 
-    <div class="sec"><h2>Add payouts</h2><span class="sum num" id="pfCount"></span></div>
+    <div class="sec"><h2>Add payouts</h2></div>
     <form class="card" id="payForm" autocomplete="off">
       <div class="pay-row">
         <div class="price-wrap"><span>$</span><input class="in" id="payAmt" inputmode="decimal" placeholder="0.00" aria-label="Payout amount"></div>
@@ -382,6 +387,7 @@ input.in{width:100%;font:inherit;font-size:17px;padding:11px 12px;border:1px sol
       </div>
       <div class="hint">Add each payout one at a time. The total adds up as you go.</div>
       <div class="note warn" id="payErr" hidden></div>
+      <button type="button" class="pay-toggle num" id="payToggle" aria-expanded="true" aria-controls="payList" hidden><span id="payToggleTxt"></span><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>
       <div class="pay-list" id="payList"></div>
     </form>
 
@@ -458,7 +464,7 @@ input.in{width:100%;font:inherit;font-size:17px;padding:11px 12px;border:1px sol
 <script src="https://unpkg.com/@zxing/library@0.21.3/umd/index.min.js"></script>
 <script>
 /* ---------- updates: GitHub Pages lets phones reuse a saved copy for ~10 minutes, so check for a newer version on open ---------- */
-const APP_VERSION="2.3";
+const APP_VERSION="2.4";
 document.getElementById("verLabel").textContent="App version "+APP_VERSION;
 function busy(){return !document.getElementById("scanner").hidden||!document.getElementById("scrim").hidden||!document.getElementById("cashScrim").hidden||
   !document.getElementById("viewer").hidden||!!window.addPhoto||
@@ -490,6 +496,7 @@ fs.enablePersistence({synchronizeTabs:true}).catch(()=>{});
 const CATS=[{k:"pokemon",n:"Pokémon"},{k:"basketball",n:"Basketball"},{k:"baseball",n:"Baseball"},{k:"football",n:"Football"},{k:"misc",n:"Misc"}];
 const catName=k=>(CATS.find(c=>c.k===k)||{n:"Other"}).n;
 const $=id=>document.getElementById(id);
+let payMin=false,payAnim=null;try{payMin=localStorage.getItem("payMin")==="1";}catch(_){}
 let payColl=null,payUnsub=null,payouts={},photosColl=null,settingsRef=null,settingsUnsub=null,settings={},autoClearRan=false,cashRef=null,cashUnsub=null,cash=null,coll=null,unsub=null,entries=[],ready=false,selCat="pokemon",editCat="pokemon",editing=null,histDay=null,lastAddedId=null;
 
 /* ---------- helpers ---------- */
@@ -670,7 +677,8 @@ function renderProfit(){if(!histDay)histDay=dayKey(new Date());$("pfDate").value
   const sp=spentOn(histDay),pd=payTotal(histDay),pr=pd-sp,n=entries.filter(e=>e.day===histDay);
   $("pfSpent").textContent=money(sp);$("pfSpentNote").textContent=n.length?"("+plural(n.length,"buy")+")":"";
   $("pfPaid").textContent=money(pd);const pe=$("pfProfit");pe.textContent=signed(pr);tone(pe,pr);
-  const items=payItems(histDay);$("pfCount").textContent=items.length?plural(items.length,"payout"):"";
+  const items=payItems(histDay),pt=$("payToggle");pt.hidden=!items.length;pt.setAttribute("aria-expanded",String(!payMin));
+  $("payToggleTxt").textContent=items.length?plural(items.length,"payout")+" · "+money(pd):"";if(!payAnim)$("payList").hidden=payMin||!items.length;
   /* Paid toggle: only for days that have payouts */
   const pdAt=paidAt(histDay),pb=$("paidBtn");$("paidRow").hidden=!items.length;
   pb.setAttribute("aria-pressed",String(!!pdAt));pb.textContent=pdAt?"✓ Paid":"Paid";
@@ -704,6 +712,16 @@ $("payAdd").addEventListener("pointerdown",e=>{if(document.activeElement===$("pa
 $("payList").onclick=e=>{const b=e.target.closest("button[data-i]");if(!b)return;const day=histDay,items=payItems(day).slice();const [gone]=items.splice(+b.dataset.i,1);
   const wasPaid=paidAt(day);payouts[day]=Object.assign({},payouts[day],{items});savePayouts(day);renderProfit();
   toast("Removed "+money(gone.c),"Undo",()=>{const back=payItems(day).slice();back.splice(+b.dataset.i,0,gone);payouts[day]={items:back,paid:paidAt(day)||wasPaid};savePayouts(day);renderProfit();});};
+/* payout list fold, remembered on this phone */
+$("payToggle").onclick=()=>{const list=$("payList"),reduce=matchMedia("(prefers-reduced-motion: reduce)").matches;
+  payMin=!payMin;try{localStorage.setItem("payMin",payMin?"1":"0");}catch(_){}
+  $("payToggle").setAttribute("aria-expanded",String(!payMin));
+  const from=payAnim?list.getBoundingClientRect().height:null;if(payAnim){payAnim.cancel();payAnim=null;}
+  list.hidden=false;list.classList.add("anim");const full=list.scrollHeight;
+  const start=from??(payMin?full:0),end=payMin?0:full;
+  if(reduce){list.classList.remove("anim");list.hidden=payMin;return;}
+  payAnim=list.animate([{height:start+"px",opacity:payMin?1:0},{height:end+"px",opacity:payMin?0:1}],{duration:260,easing:"cubic-bezier(.2,.8,.2,1)"});
+  payAnim.onfinish=()=>{payAnim=null;list.classList.remove("anim");list.hidden=payMin;};};
 $("pfDate").onchange=e=>{if(e.target.value){histDay=e.target.value;renderProfit();}};
 $("pfToday").onclick=()=>{histDay=dayKey(new Date());renderProfit();};
 $("pfDays").onclick=e=>{const b=e.target.closest(".day-row");if(!b)return;histDay=b.dataset.day;renderProfit();window.scrollTo({top:0,behavior:"smooth"});};

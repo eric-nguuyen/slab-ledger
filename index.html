@@ -464,7 +464,7 @@ input.in{width:100%;font:inherit;font-size:17px;padding:11px 12px;border:1px sol
 <script src="https://unpkg.com/@zxing/library@0.21.3/umd/index.min.js"></script>
 <script>
 /* ---------- updates: GitHub Pages lets phones reuse a saved copy for ~10 minutes, so check for a newer version on open ---------- */
-const APP_VERSION="2.4";
+const APP_VERSION="2.5";
 document.getElementById("verLabel").textContent="App version "+APP_VERSION;
 function busy(){return !document.getElementById("scanner").hidden||!document.getElementById("scrim").hidden||!document.getElementById("cashScrim").hidden||
   !document.getElementById("viewer").hidden||!!window.addPhoto||
@@ -505,6 +505,9 @@ const dayKey=d=>d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());
 const money=c=>(c<0?"-":"")+"$"+(Math.abs(c)/100).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});
 function parseCents(s){s=String(s||"").replace(/[$,\s]/g,"");if(!/^\d*\.?\d{0,2}$/.test(s)||s===""||s===".")return null;return Math.round(parseFloat(s)*100);}
 const fmtTime=ts=>new Date(ts).toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit"});
+/* "This week" runs Wednesday through Tuesday. WEEK_START: 0=Sun … 3=Wed … 6=Sat */
+const WEEK_START=3;
+function weekStart(d){const w=new Date(d);w.setHours(0,0,0,0);w.setDate(w.getDate()-((w.getDay()-WEEK_START+7)%7));return w;}
 function fmtDay(k,long){const[y,m,d]=k.split("-").map(Number);return new Date(y,m-1,d).toLocaleDateString("en-US",long?{weekday:"long",month:"long",day:"numeric",year:"numeric"}:{weekday:"short",month:"short",day:"numeric",year:"numeric"});}
 const cleanCert=s=>String(s||"").trim().replace(/\s+/g,"");
 const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
@@ -581,7 +584,7 @@ function slabHTML(e,showDate){return `<div class="swipe" data-id="${esc(e.id)}">
 
 function render(){
   const now=new Date(),tk=dayKey(now);
-  const mon=new Date(now);mon.setHours(0,0,0,0);mon.setDate(mon.getDate()-((mon.getDay()+6)%7));
+  const mon=weekStart(now);
   const monthStart=new Date(now.getFullYear(),now.getMonth(),1).getTime();
   const today=entries.filter(e=>e.day===tk);
   $("todayTotal").textContent=money(sum(today));
@@ -685,7 +688,7 @@ function renderProfit(){if(!histDay)histDay=dayKey(new Date());$("pfDate").value
   $("paidNote").textContent=pdAt?"Paid "+fmtDay(dayKey(new Date(pdAt)))+". Tap again if that's wrong.":"Not paid yet. Tap Paid once you get the "+money(pd)+".";
   $("payList").innerHTML=items.map((it,i)=>`<div class="pay-item"><span class="n">${i+1}</span><b class="num">${money(it.c)}</b><span class="t">${it.t?fmtTime(it.t):""}</span><button type="button" data-i="${i}" aria-label="Remove ${money(it.c)}">×</button></div>`).join("");
   const days=Object.keys(payouts).filter(d=>payItems(d).length).sort().reverse();
-  const now=new Date(),mon=new Date(now);mon.setHours(0,0,0,0);mon.setDate(mon.getDate()-((mon.getDay()+6)%7));
+  const now=new Date(),mon=weekStart(now);
   const wk=dayKey(mon),mo=dayKey(new Date(now.getFullYear(),now.getMonth(),1));
   [["pfWeek",days.filter(d=>d>=wk)],["pfMonth",days.filter(d=>d>=mo)],["pfAll",days]].forEach(([id,ds])=>{const v=profitOver(ds),el=$(id);el.textContent=signed(v);tone(el,v);});
   const owedDays=days.filter(d=>!paidAt(d));

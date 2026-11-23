@@ -148,6 +148,16 @@ input.in{width:100%;font:inherit;font-size:17px;padding:11px 12px;border:1px sol
 .pf-stat span{display:block;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
 .pf-stat b{display:block;font-size:17px;font-weight:800;margin-top:2px}
 .day-row .pf{font-weight:800}
+/* paid toggle: outline when still owed, solid green once paid */
+.paid-row{display:flex;align-items:center;gap:12px;margin-top:12px;padding-top:12px;border-top:1px solid var(--line)}
+.paid-btn{flex:none;min-width:110px;font-size:16px}
+.paid-btn[aria-pressed="true"]{background:var(--gain);border-color:var(--gain);color:#fff}
+.paid-note{font-size:13px;color:var(--muted);line-height:1.35}
+.pf-owed{grid-column:1/-1;display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+.pf-owed b{font-size:22px;margin-top:0}
+.tag{display:inline-block;font-size:11px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;padding:1px 6px;border-radius:4px;margin-left:6px;vertical-align:1px}
+.tag.paid{color:var(--gain);background:var(--gain-soft)}
+.tag.owed{color:var(--muted);border:1px solid var(--line)}
 
 /* photo field */
 .photo-field{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
@@ -358,6 +368,10 @@ input.in{width:100%;font:inherit;font-size:17px;padding:11px 12px;border:1px sol
         <div class="pf-line"><span>Payouts</span><b id="pfPaid">$0.00</b></div>
         <div class="pf-big"><span>Profit</span><b id="pfProfit">$0.00</b></div>
       </div>
+      <div class="paid-row" id="paidRow" hidden>
+        <button class="btn paid-btn" id="paidBtn" type="button" aria-pressed="false">Paid</button>
+        <div class="paid-note" id="paidNote"></div>
+      </div>
     </div>
 
     <div class="sec"><h2>Add payouts</h2><span class="sum num" id="pfCount"></span></div>
@@ -376,8 +390,9 @@ input.in{width:100%;font:inherit;font-size:17px;padding:11px 12px;border:1px sol
       <div class="pf-stat"><span>This week</span><b id="pfWeek">$0.00</b></div>
       <div class="pf-stat"><span>This month</span><b id="pfMonth">$0.00</b></div>
       <div class="pf-stat"><span>All time</span><b id="pfAll">$0.00</b></div>
+      <div class="pf-stat pf-owed"><span>Amount owed <span id="pfOwedNote" style="text-transform:none;letter-spacing:0;font-weight:600"></span></span><b id="pfOwed">$0.00</b></div>
     </div>
-    <div class="hint" style="margin-top:6px">Totals include days you've entered payouts for.</div>
+    <div class="hint" style="margin-top:6px">Profit totals include days you've entered payouts for. Amount owed adds up the payouts on days not marked Paid.</div>
 
     <div class="sec"><h2>Days with payouts</h2></div>
     <div class="list" id="pfDays"></div>
@@ -443,7 +458,7 @@ input.in{width:100%;font:inherit;font-size:17px;padding:11px 12px;border:1px sol
 <script src="https://unpkg.com/@zxing/library@0.21.3/umd/index.min.js"></script>
 <script>
 /* ---------- updates: GitHub Pages lets phones reuse a saved copy for ~10 minutes, so check for a newer version on open ---------- */
-const APP_VERSION="2.2";
+const APP_VERSION="2.3";
 document.getElementById("verLabel").textContent="App version "+APP_VERSION;
 function busy(){return !document.getElementById("scanner").hidden||!document.getElementById("scrim").hidden||!document.getElementById("cashScrim").hidden||
   !document.getElementById("viewer").hidden||!!window.addPhoto||
@@ -645,6 +660,8 @@ $("search").oninput=()=>renderHist();
 /* ---------- profit: payouts - spent, per day ---------- */
 const payItems=day=>(payouts[day]&&Array.isArray(payouts[day].items))?payouts[day].items:[];
 const payTotal=day=>payItems(day).reduce((t,i)=>t+(i.c||0),0);
+/* payouts[day] = {items, paid?}; paid is the ms time the day was marked paid */
+const paidAt=day=>(payouts[day]&&payouts[day].paid)||0;
 const spentOn=day=>sum(entries.filter(e=>e.day===day));
 const signed=c=>(c>0?"+":c<0?"−":"")+money(Math.abs(c));
 const tone=(el,c)=>{el.classList.toggle("gain",c>0);el.classList.toggle("loss",c<0);};
@@ -654,33 +671,44 @@ function renderProfit(){if(!histDay)histDay=dayKey(new Date());$("pfDate").value
   $("pfSpent").textContent=money(sp);$("pfSpentNote").textContent=n.length?"("+plural(n.length,"buy")+")":"";
   $("pfPaid").textContent=money(pd);const pe=$("pfProfit");pe.textContent=signed(pr);tone(pe,pr);
   const items=payItems(histDay);$("pfCount").textContent=items.length?plural(items.length,"payout"):"";
+  /* Paid toggle: only for days that have payouts */
+  const pdAt=paidAt(histDay),pb=$("paidBtn");$("paidRow").hidden=!items.length;
+  pb.setAttribute("aria-pressed",String(!!pdAt));pb.textContent=pdAt?"✓ Paid":"Paid";
+  $("paidNote").textContent=pdAt?"Paid "+fmtDay(dayKey(new Date(pdAt)))+". Tap again if that's wrong.":"Not paid yet. Tap Paid once you get the "+money(pd)+".";
   $("payList").innerHTML=items.map((it,i)=>`<div class="pay-item"><span class="n">${i+1}</span><b class="num">${money(it.c)}</b><span class="t">${it.t?fmtTime(it.t):""}</span><button type="button" data-i="${i}" aria-label="Remove ${money(it.c)}">×</button></div>`).join("");
   const days=Object.keys(payouts).filter(d=>payItems(d).length).sort().reverse();
   const now=new Date(),mon=new Date(now);mon.setHours(0,0,0,0);mon.setDate(mon.getDate()-((mon.getDay()+6)%7));
   const wk=dayKey(mon),mo=dayKey(new Date(now.getFullYear(),now.getMonth(),1));
   [["pfWeek",days.filter(d=>d>=wk)],["pfMonth",days.filter(d=>d>=mo)],["pfAll",days]].forEach(([id,ds])=>{const v=profitOver(ds),el=$(id);el.textContent=signed(v);tone(el,v);});
-  $("pfDays").innerHTML=days.length?days.map(d=>{const v=payTotal(d)-spentOn(d);return`<button type="button" class="day-row" data-day="${d}" aria-current="${d===histDay}"><span><span class="d">${esc(fmtDay(d))}</span><br><span class="c">${money(payTotal(d))} paid · ${money(spentOn(d))} spent</span></span><b class="num pf ${v>0?"gain":v<0?"loss":""}">${signed(v)}</b></button>`;}).join(""):`<div class="empty">Days show up here once you add payouts.</div>`;}
-async function savePayouts(day,items){if(!payColl)return;
-  const ref=payColl.doc(day);
-  try{if(items.length)await ref.set({items});else await ref.delete();}catch(_){toast("Couldn't save payouts. Try again.");}}
+  const owedDays=days.filter(d=>!paidAt(d));
+  $("pfOwed").textContent=money(owedDays.reduce((t,d)=>t+payTotal(d),0));
+  $("pfOwedNote").textContent=owedDays.length?"· "+plural(owedDays.length,"day"):"";
+  $("pfDays").innerHTML=days.length?days.map(d=>{const v=payTotal(d)-spentOn(d);return`<button type="button" class="day-row" data-day="${d}" aria-current="${d===histDay}"><span><span class="d">${esc(fmtDay(d))}</span>${paidAt(d)?'<span class="tag paid">Paid</span>':'<span class="tag owed">Owed</span>'}<br><span class="c">${money(payTotal(d))} payout · ${money(spentOn(d))} spent</span></span><b class="num pf ${v>0?"gain":v<0?"loss":""}">${signed(v)}</b></button>`;}).join(""):`<div class="empty">Days show up here once you add payouts.</div>`;}
+async function savePayouts(day){if(!payColl)return;
+  const ref=payColl.doc(day),p=payouts[day]||{},items=Array.isArray(p.items)?p.items:[];
+  try{if(items.length)await ref.set(p.paid?{items,paid:p.paid}:{items});else await ref.delete();}catch(_){toast("Couldn't save payouts. Try again.");}}
+function setPaid(day,ts){const p=payouts[day];if(!p)return;payouts[day]=Object.assign({},p,{paid:ts||0});savePayouts(day);renderProfit();}
+$("paidBtn").onclick=()=>{const day=histDay,was=paidAt(day);
+  if(was){setPaid(day,0);toast("Marked not paid","Undo",()=>setPaid(day,was));}
+  else{setPaid(day,Date.now());toast("Marked paid · "+money(payTotal(day)),"Undo",()=>setPaid(day,0));}};
 $("payForm").onsubmit=ev=>{ev.preventDefault();const err=$("payErr");err.hidden=true;
   const parts=$("payAmt").value.split(/[+\s]+/).filter(Boolean);
   if(!parts.length){$("payAmt").focus();return;}
   const vals=parts.map(parseCents);
   if(vals.some(v=>v===null||v<=0)){err.textContent="Enter a payout amount, like 120 or 45.50.";err.hidden=false;return;}
   const now=Date.now();const items=payItems(histDay).concat(vals.map(c=>({c,t:now})));
-  payouts[histDay]={items};savePayouts(histDay,items);$("payAmt").value="";renderProfit();
+  payouts[histDay]=Object.assign({},payouts[histDay],{items});savePayouts(histDay);$("payAmt").value="";renderProfit();
   toast(vals.length>1?"Added "+plural(vals.length,"payout")+" · "+money(vals.reduce((a,b)=>a+b,0)):"Added "+money(vals[0]));};
 /* keep the keyboard up when tapping + Add */
 $("payAdd").addEventListener("pointerdown",e=>{if(document.activeElement===$("payAmt"))e.preventDefault();});
 $("payList").onclick=e=>{const b=e.target.closest("button[data-i]");if(!b)return;const day=histDay,items=payItems(day).slice();const [gone]=items.splice(+b.dataset.i,1);
-  payouts[day]={items};savePayouts(day,items);renderProfit();
-  toast("Removed "+money(gone.c),"Undo",()=>{const back=payItems(day).slice();back.splice(+b.dataset.i,0,gone);payouts[day]={items:back};savePayouts(day,back);renderProfit();});};
+  const wasPaid=paidAt(day);payouts[day]=Object.assign({},payouts[day],{items});savePayouts(day);renderProfit();
+  toast("Removed "+money(gone.c),"Undo",()=>{const back=payItems(day).slice();back.splice(+b.dataset.i,0,gone);payouts[day]={items:back,paid:paidAt(day)||wasPaid};savePayouts(day);renderProfit();});};
 $("pfDate").onchange=e=>{if(e.target.value){histDay=e.target.value;renderProfit();}};
 $("pfToday").onclick=()=>{histDay=dayKey(new Date());renderProfit();};
 $("pfDays").onclick=e=>{const b=e.target.closest(".day-row");if(!b)return;histDay=b.dataset.day;renderProfit();window.scrollTo({top:0,behavior:"smooth"});};
 $("pfExport").onclick=async()=>{const days=Object.keys(payouts).filter(d=>payItems(d).length).sort();if(!days.length){toast("No payouts to export yet");return;}
-  const rows=[["Date","Spent","Payouts","Profit","Payout amounts"]].concat(days.map(d=>[d,(spentOn(d)/100).toFixed(2),(payTotal(d)/100).toFixed(2),((payTotal(d)-spentOn(d))/100).toFixed(2),payItems(d).map(i=>(i.c/100).toFixed(2)).join(" + ")]));
+  const rows=[["Date","Spent","Payouts","Profit","Paid","Payout amounts"]].concat(days.map(d=>[d,(spentOn(d)/100).toFixed(2),(payTotal(d)/100).toFixed(2),((payTotal(d)-spentOn(d))/100).toFixed(2),paidAt(d)?"Yes":"No",payItems(d).map(i=>(i.c/100).toFixed(2)).join(" + ")]));
   await shareCSV("slab-ledger-profit-"+dayKey(new Date())+".csv",csvOf(rows));};
 
 /* ---------- duplicate check ---------- */
